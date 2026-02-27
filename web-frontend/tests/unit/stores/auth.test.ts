@@ -52,7 +52,7 @@ describe('useAuthStore', () => {
   describe('login', () => {
     it('should store token and fetch user on successful login', async () => {
       const mockToken = { access_token: 'new-access-token', token_type: 'bearer' }
-      const mockUser = { id: '1', username: 'admin', display_name: '管理员', phone: null, is_active: true, last_login_at: null, created_at: '2026-01-01' }
+      const mockUser = { id: '1', username: 'admin', display_name: '管理员', phone: null, email: null, role: 'admin', is_active: true, is_locked: false, last_login_at: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
 
       vi.mocked(authApi.login).mockResolvedValue(mockToken)
       vi.mocked(authApi.getMe).mockResolvedValue(mockUser)
@@ -134,7 +134,7 @@ describe('useAuthStore', () => {
     it('should clear all auth state', () => {
       const store = useAuthStore()
       store.accessToken = 'token'
-      store.user = { id: '1', username: 'test', display_name: null, phone: null, is_active: true, last_login_at: null, created_at: '' }
+      store.user = { id: '1', username: 'test', display_name: null, phone: null, email: null, role: 'trader', is_active: true, is_locked: false, last_login_at: null, created_at: '', updated_at: '' }
 
       store.clearAuth()
 

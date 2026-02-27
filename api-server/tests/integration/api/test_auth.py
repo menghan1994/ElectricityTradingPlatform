@@ -23,6 +23,7 @@ def _make_user_obj(
     is_locked: bool = False,
     locked_until: datetime | None = None,
     failed_login_attempts: int = 0,
+    role: str = "trader",
 ) -> MagicMock:
     user = MagicMock(spec=User)
     user.id = uuid4()
@@ -30,6 +31,8 @@ def _make_user_obj(
     user.hashed_password = hash_password(password)
     user.display_name = "测试用户"
     user.phone = None
+    user.email = None
+    user.role = role
     user.is_active = is_active
     user.is_locked = is_locked
     user.locked_until = locked_until

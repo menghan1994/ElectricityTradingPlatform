@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import jwt
@@ -5,6 +6,9 @@ import structlog
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 from app.core.config import settings
 from app.core.database import get_db_session
@@ -19,8 +23,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_db_session),
-):
-    """从 Bearer Token 解析当前用户。"""
+) -> "User":
+    """从 Bearer Token 解析当前用户。
+
+    注意：Token payload 中携带 role 字段（用于前端快速判断权限），但此处不使用也不验证
+    Token 中的 role。权限校验统一从数据库读取最新 role 值（通过 require_roles 依赖），
+    确保角色变更即时生效，无需等待 Token 刷新。
+    """
     from app.models.user import User
 
     try:
@@ -65,8 +74,8 @@ async def get_current_user(
 
 
 async def get_current_active_user(
-    current_user=Depends(get_current_user),
-):
+    current_user: "User" = Depends(get_current_user),
+) -> "User":
     """校验当前用户未停用且未锁定。"""
     from datetime import UTC, datetime
 
@@ -88,3 +97,18 @@ async def get_current_active_user(
             )
 
     return current_user
+
+
+def require_roles(allowed_roles: list[str]):
+    """依赖工厂：校验当前用户角色是否在允许列表中。"""
+    async def role_checker(
+        current_user: "User" = Depends(get_current_active_user),
+    ) -> "User":
+        if current_user.role not in allowed_roles:
+            raise BusinessError(
+                code="FORBIDDEN",
+                message="无权限执行此操作",
+                status_code=403,
+            )
+        return current_user
+    return role_checker

@@ -5,14 +5,20 @@ export interface TokenResponse {
   token_type: string
 }
 
+export type RoleType = 'admin' | 'trader' | 'storage_operator' | 'trading_manager' | 'executive_readonly'
+
 export interface UserRead {
   id: string
   username: string
   display_name: string | null
   phone: string | null
+  email: string | null
+  role: RoleType
   is_active: boolean
+  is_locked: boolean
   last_login_at: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface ChangePasswordRequest {

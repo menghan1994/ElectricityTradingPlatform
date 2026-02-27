@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -88,7 +89,7 @@ class AuthService:
         await self.user_repo.reset_failed_attempts(user)
         await self.user_repo.update_last_login(user)
 
-        access_token = create_access_token(user.id, user.username)
+        access_token = create_access_token(user.id, user.username, user.role)
         refresh_token = create_refresh_token(user.id)
 
         logger.info("login_success", username=username, user_id=str(user.id))
@@ -134,7 +135,7 @@ class AuthService:
                 status_code=401,
             )
 
-        return create_access_token(user.id, user.username)
+        return create_access_token(user.id, user.username, user.role)
 
     async def change_password(self, user_id: UUID, old_password: str, new_password: str) -> None:
         """修改密码：验证旧密码 + 校验新密码强度 + 更新哈希。"""
@@ -162,6 +163,6 @@ class AuthService:
                 status_code=422,
             )
 
-        hashed = hash_password(new_password)
+        hashed = await asyncio.to_thread(hash_password, new_password)
         await self.user_repo.update_password(user, hashed)
         logger.info("password_changed", user_id=str(user_id))

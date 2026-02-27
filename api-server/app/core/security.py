@@ -63,12 +63,13 @@ def validate_password_strength(password: str) -> list[str]:
     return violations
 
 
-def create_access_token(user_id: UUID, username: str) -> str:
+def create_access_token(user_id: UUID, username: str, role: str = "trader") -> str:
     """生成 Access Token（30分钟有效期）。"""
     now = datetime.now(UTC)
     payload = {
         "sub": str(user_id),
         "username": username,
+        "role": role,
         "exp": now + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
         "iat": now,
         "type": "access",

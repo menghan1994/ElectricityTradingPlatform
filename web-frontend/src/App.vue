@@ -31,6 +31,9 @@ const { authStore } = useAuth()
           <a-menu-item key="dashboard">
             <router-link to="/">首页</router-link>
           </a-menu-item>
+          <a-menu-item v-if="authStore.user?.role === 'admin'" key="user-management">
+            <router-link to="/admin/users">用户管理</router-link>
+          </a-menu-item>
         </a-menu>
       </a-layout-sider>
       <a-layout>

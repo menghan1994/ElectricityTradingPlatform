@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -13,6 +13,11 @@ class UserRepository(BaseRepository[User]):
 
     async def get_by_username(self, username: str) -> User | None:
         stmt = select(User).where(User.username == username)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_email(self, email: str) -> User | None:
+        stmt = select(User).where(User.email == email)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -38,3 +43,28 @@ class UserRepository(BaseRepository[User]):
     async def update_password(self, user: User, hashed_password: str) -> None:
         user.hashed_password = hashed_password
         await self.session.flush()
+
+    async def get_all_paginated(
+        self, page: int = 1, page_size: int = 20, search: str | None = None,
+    ) -> tuple[list[User], int]:
+        page_size = min(page_size, 100)
+        stmt = select(User)
+        count_stmt = select(func.count()).select_from(User)
+
+        if search:
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            search_filter = or_(
+                User.username.ilike(f"%{escaped}%", escape="\\"),
+                User.display_name.ilike(f"%{escaped}%", escape="\\"),
+            )
+            stmt = stmt.where(search_filter)
+            count_stmt = count_stmt.where(search_filter)
+
+        total_result = await self.session.execute(count_stmt)
+        total = total_result.scalar_one()
+
+        stmt = stmt.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+        result = await self.session.execute(stmt)
+        users = list(result.scalars().all())
+
+        return users, total

@@ -10,6 +10,18 @@ from app.core.exceptions import BusinessError
 from app.core.security import hash_password
 from app.services.auth_service import AuthService, LOCK_MINUTES, MAX_FAILED_ATTEMPTS
 
+# 预计算的 bcrypt 哈希常量，避免每次 _make_user 时执行昂贵的 bcrypt rounds=14
+# 对应明文: "Test@1234"
+_PREHASHED_TEST = "$2b$14$M2QxULsVAV.uRyUo18yo8ePtCWkB5WxXb.j8mXNi5CLqZWCsO1aAG"
+# 对应明文: "OldPass@123"（change_password 测试专用）
+_PREHASHED_OLDPASS = hash_password("OldPass@123")
+
+# 预计算哈希映射：避免在测试中重复调用 bcrypt
+_PASSWORD_HASHES: dict[str, str] = {
+    "Test@1234": _PREHASHED_TEST,
+    "OldPass@123": _PREHASHED_OLDPASS,
+}
+
 
 @pytest.fixture
 def mock_user_repo():
@@ -29,15 +41,17 @@ def _make_user(
     is_locked: bool = False,
     locked_until: datetime | None = None,
     failed_login_attempts: int = 0,
+    role: str = "trader",
 ):
     user = MagicMock()
     user.id = uuid4()
     user.username = username
-    user.hashed_password = hash_password(password)
+    user.hashed_password = _PASSWORD_HASHES.get(password) or hash_password(password)
     user.is_active = is_active
     user.is_locked = is_locked
     user.locked_until = locked_until
     user.failed_login_attempts = failed_login_attempts
+    user.role = role
     return user
 
 
