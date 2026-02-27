@@ -24,7 +24,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env.development
     depends_on:
       postgresql:
         condition: service_healthy
@@ -45,7 +45,7 @@ services:
       dockerfile: Dockerfile
     command: celery -A app.tasks.celery_app worker --loglevel=info
     env_file:
-      - .env
+      - .env.development
     depends_on:
       api-server:
         condition: service_healthy
@@ -67,7 +67,7 @@ services:
     ports:
       - "8100:8100"
     env_file:
-      - .env
+      - .env.development
     depends_on:
       postgresql:
         condition: service_healthy
@@ -92,6 +92,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-electricity_trading}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-app_user_password}
+      AGENT_DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent_user_password}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
@@ -134,9 +136,11 @@ services:
     networks:
       - app-network
 
-  # Langfuse V3 requires ClickHouse + MinIO + Redis.
-  # Use `docker compose --profile langfuse up` to start it after configuring.
-  # See: https://langfuse.com/self-hosting/deployment/docker-compose
+  # Langfuse V3 自托管需要 ClickHouse + MinIO + Redis 等额外依赖。
+  # MVP阶段作为可选组件，需要额外配置后启动：
+  #   docker compose --profile langfuse up
+  # 完整部署参考: https://langfuse.com/self-hosting/deployment/docker-compose
+  # 注意：Story 1.1 AC#1 中 Langfuse 启动验证需在配置完成后单独进行。
   langfuse:
     image: langfuse/langfuse:3
     profiles:

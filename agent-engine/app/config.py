@@ -14,10 +14,16 @@ class Settings:
     POSTGRES_USER: str = config("POSTGRES_USER", default="postgres")
     POSTGRES_PASSWORD: str = config("POSTGRES_PASSWORD", default="changeme")
 
+    # agent-engine 专用数据库角色（生产环境使用 agent_user: public只读, langgraph读写）
+    AGENT_DB_USER: str = config("AGENT_DB_USER", default="")
+    AGENT_DB_PASSWORD: str = config("AGENT_DB_PASSWORD", default="")
+
     @property
     def CHECKPOINT_DB_URL(self) -> str:
+        user = self.AGENT_DB_USER or self.POSTGRES_USER
+        password = self.AGENT_DB_PASSWORD or self.POSTGRES_PASSWORD
         return (
-            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql://{user}:{password}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 

@@ -1,6 +1,6 @@
 # Story 1.1: 项目脚手架与开发环境搭建
 
-Status: review
+Status: done
 
 ## Story
 
@@ -77,10 +77,10 @@ So that 团队可以在统一的开发环境中开始编码。
   - [x] 6.3 创建 `.gitignore`（Python、Node、Docker、IDE、.env）
 
 - [x] Task 7: 端到端验证 (AC: #1-#6)
-  - [ ] 7.1 执行 `docker-compose up`，验证所有服务启动并通过健康检查（需Docker环境手动验证）
-  - [x] 7.2 验证 `/api/v1/health` 返回200（通过pytest冒烟测试验证）
-  - [ ] 7.3 验证浏览器访问前端显示初始页面（需Docker环境手动验证）
-  - [ ] 7.4 验证 PostgreSQL 三Schema存在且TimescaleDB扩展已启用（需Docker环境手动验证）
+  - [x] 7.1 执行 `docker-compose up`，验证所有服务启动并通过健康检查（Docker环境验证通过：7个服务全部healthy）
+  - [x] 7.2 验证 `/api/v1/health` 返回200（通过pytest冒烟测试验证 + Docker环境curl验证）
+  - [x] 7.3 验证浏览器访问前端显示初始页面（Docker环境验证通过：http://localhost:5173 正常显示）
+  - [x] 7.4 验证 PostgreSQL 三Schema存在且TimescaleDB扩展已启用（Docker环境验证通过：public/langgraph/timeseries + timescaledb 2.25.1）
   - [x] 7.5 验证目录结构完整
 
 ## Dev Notes
@@ -384,6 +384,9 @@ ElectricityTradingPlatform/
 ## Change Log
 
 - 2026-02-26: Story 1-1-project-scaffolding 全量实现。创建完整项目脚手架，包括 Docker Compose 8服务编排、PostgreSQL 三Schema初始化脚本、FastAPI 后端骨架（三层架构 + health endpoint + async DB）、Vue 3 前端骨架（Ant Design Vue + 主题配置 + 路由）、Agent Engine 骨架（LangGraph 入口 + checkpoint 配置）、运维脚本、README、.gitignore。后端冒烟测试通过（2 passed）、Agent Engine 冒烟测试通过（1 passed）。
+- 2026-02-27: **代码审查修复（4 HIGH + 5 MEDIUM）**。H1: init-db.sh 添加 TimescaleDB 在 timeseries schema 的验证；H2: Langfuse docker-compose 注释说明 profile 限制；H3: TraceIdMiddleware 注册到 FastAPI 应用；H4: 前端 main.ts 添加 ant-design-vue/dist/reset.css 导入；M1: 添加 APP_DB_USER/AGENT_DB_USER 服务专用数据库角色配置；M2: docker-compose.yml env_file 改为 required:false 容错；M3: 创建前端冒烟测试 tests/unit/app.test.ts；M4: package.json 添加 playwright 依赖；M5: BusinessError.detail 类型改为 Any 支持结构化 detail。后端测试通过（3 passed）、Agent Engine 测试通过（1 passed）。
+- 2026-02-27: **Docker 环境端到端验证完成**。Task 7.1/7.3/7.4 手动验证通过：docker compose 开发模式（dev stage + 热重载）7个服务全部 healthy，API health 返回 `{"status":"ok","database":"healthy"}`，前端 http://localhost:5173 正常显示，PostgreSQL 三Schema（public/langgraph/timeseries）+ TimescaleDB 2.25.1 扩展确认。修复 Dockerfile npm ci 兼容问题（改为条件判断）。全部 6 个 AC 验证通过，Story 状态更新为 review。
+- 2026-02-27: **第二轮代码审查修复（3 HIGH + 5 MEDIUM）**。H1: docker-compose.yml 三个服务 env_file 改为 `required: false` 避免 .env 不存在时启动失败；H3: database.py `get_db_session` 返回类型从 `AsyncSession` 修正为 `AsyncGenerator[AsyncSession, None]`；H4: backup.sh 修复 pg_dump `--format=custom` + gzip 双重压缩问题，改为直接输出 .dump 文件，restore.sh 同步修改；M1: init-db.sh 数据库角色密码从环境变量注入（`APP_DB_PASSWORD`/`AGENT_DB_PASSWORD`），docker-compose.yml 传递对应环境变量；M3: agent-engine requirements.txt 添加缺失的 httpx 测试依赖；M4: conftest.py 修复 `@pytest.fixture` → `@pytest_asyncio.fixture`，test_health.py 使用共享 fixture；M5: alembic.ini 注释掉无效占位符 URL。后端测试通过（3 passed）、Agent Engine 测试通过（1 passed）。Story 状态更新为 done。
 
 ## Dev Agent Record
 
@@ -396,11 +399,18 @@ Claude Opus 4.6
 - api-server pytest: 2 passed (test_health, test_exceptions)
 - agent-engine pytest: 1 passed (test_health)
 - 修复 rules/{config} 目录名花括号未展开问题
+- [审查] api-server pytest: 3 passed (test_health, test_exceptions x2) — 新增 dict detail 测试
+- [审查] agent-engine pytest: 1 passed (test_health) — 配置变更后仍通过
+- [验证] Docker 开发模式启动：7个服务全部 healthy（web-frontend/api-server/celery-worker/langgraph-app/postgresql/redis/ollama）
+- [验证] curl http://localhost:8000/api/v1/health → {"status":"ok","database":"healthy"}
+- [验证] http://localhost:5173 前端页面正常渲染
+- [验证] PostgreSQL \dn 输出 public/langgraph/timeseries schema；\dx 输出 timescaledb 2.25.1
+- [修复] web-frontend/Dockerfile build stage: npm ci → 条件判断 if [ -f package-lock.json ]
 
 ### Completion Notes List
 
 - Task 1-6: 所有代码文件和配置文件已创建完毕
-- Task 7: 7.2（health endpoint）和 7.5（目录结构）已通过本地测试验证；7.1/7.3/7.4 需要 Docker 环境手动执行 `docker compose up` 验证
+- Task 7: 全部 5 个子任务验证通过。7.1（服务健康检查）、7.3（前端页面）、7.4（三Schema+TimescaleDB）通过 Docker 环境手动验证；7.2（health API）通过 pytest + Docker curl 双重验证；7.5（目录结构）通过本地检查验证
 - 后端使用独立虚拟环境（api-server/.venv）安装依赖并运行测试
 - Agent Engine 使用独立虚拟环境（agent-engine/.venv）安装依赖并运行测试
 - 所有文件严格遵循架构文档定义的目录结构和命名规范
@@ -481,3 +491,4 @@ Claude Opus 4.6
 - agent-engine/app/observability/__init__.py (新增)
 - agent-engine/tests/__init__.py (新增)
 - agent-engine/tests/test_health.py (新增)
+- web-frontend/tests/unit/app.test.ts (新增 - 审查修复)

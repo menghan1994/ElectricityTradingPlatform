@@ -17,3 +17,16 @@ async def test_business_error_format():
     assert error.message == "测试错误"
     assert error.detail == "详细信息"
     assert error.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_business_error_dict_detail():
+    error = BusinessError(
+        code="STATION_NOT_FOUND",
+        message="电站不存在",
+        detail={"station_id": 999},
+        status_code=404,
+    )
+    assert error.code == "STATION_NOT_FOUND"
+    assert error.detail == {"station_id": 999}
+    assert error.status_code == 404

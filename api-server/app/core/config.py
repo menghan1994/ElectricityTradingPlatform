@@ -9,10 +9,16 @@ class Settings:
     POSTGRES_USER: str = config("POSTGRES_USER", default="postgres")
     POSTGRES_PASSWORD: str = config("POSTGRES_PASSWORD", default="changeme")
 
+    # api-server 专用数据库角色（生产环境使用 app_user 实现权限隔离）
+    APP_DB_USER: str = config("APP_DB_USER", default="")
+    APP_DB_PASSWORD: str = config("APP_DB_PASSWORD", default="")
+
     @property
     def DATABASE_URL(self) -> str:
+        user = self.APP_DB_USER or self.POSTGRES_USER
+        password = self.APP_DB_PASSWORD or self.POSTGRES_PASSWORD
         return (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+asyncpg://{user}:{password}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 

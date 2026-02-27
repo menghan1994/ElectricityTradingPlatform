@@ -42,7 +42,7 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   # Epic 1: 项目基础设施与用户访问
   epic-1: in-progress
-  1-1-project-scaffolding: review
+  1-1-project-scaffolding: done
   1-2-user-authentication: backlog
   1-3-user-account-management: backlog
   1-4-trader-station-binding: backlog

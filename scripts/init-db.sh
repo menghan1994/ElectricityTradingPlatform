@@ -6,6 +6,8 @@ set -e
 # 创建专用数据库角色：app_user（api-server用）、agent_user（agent-engine用）
 
 POSTGRES_DB="${POSTGRES_DB:-electricity_trading}"
+APP_DB_PASSWORD="${APP_DB_PASSWORD:-app_user_password}"
+AGENT_DB_PASSWORD="${AGENT_DB_PASSWORD:-agent_user_password}"
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
     -- 创建三个Schema
@@ -24,21 +26,23 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     );
     SELECT create_hypertable('timeseries._timescaledb_verify', 'time', if_not_exists => TRUE);
     DROP TABLE timeseries._timescaledb_verify;
+EOSQL
 
-    -- 创建专用数据库角色
-    DO $$
+# 创建专用数据库角色（密码从环境变量注入，使用非引号 heredoc 以展开 shell 变量）
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    DO \$\$
     BEGIN
         -- app_user: api-server使用，对public和timeseries有完全权限
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_user') THEN
-            CREATE ROLE app_user WITH LOGIN PASSWORD 'app_user_password';
+            CREATE ROLE app_user WITH LOGIN PASSWORD '${APP_DB_PASSWORD}';
         END IF;
 
         -- agent_user: agent-engine使用，对public只读，对langgraph有完全权限
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'agent_user') THEN
-            CREATE ROLE agent_user WITH LOGIN PASSWORD 'agent_user_password';
+            CREATE ROLE agent_user WITH LOGIN PASSWORD '${AGENT_DB_PASSWORD}';
         END IF;
     END
-    $$;
+    \$\$;
 
     -- app_user 权限配置
     -- public schema: 完全权限

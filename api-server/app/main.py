@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.exceptions import BusinessError
-from app.core.logging import setup_logging
+from app.core.logging import setup_logging, TraceIdMiddleware
 from app.api.v1.router import api_v1_router
 
 
@@ -22,6 +22,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(TraceIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,

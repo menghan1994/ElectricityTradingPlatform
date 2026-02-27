@@ -3,7 +3,7 @@ set -e
 
 if [ -z "$1" ]; then
     echo "用法: ./restore.sh <备份文件路径>"
-    echo "示例: ./restore.sh ./backups/electricity_trading_20260226_120000.sql.gz"
+    echo "示例: ./restore.sh ./backups/electricity_trading_20260226_120000.dump"
     exit 1
 fi
 
@@ -24,10 +24,11 @@ if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
     exit 0
 fi
 
-gunzip -c "$BACKUP_FILE" | docker compose exec -T postgresql pg_restore \
+docker compose exec -T postgresql pg_restore \
     -U "${POSTGRES_USER:-postgres}" \
     -d "${POSTGRES_DB:-electricity_trading}" \
     --clean \
-    --if-exists
+    --if-exists \
+    < "$BACKUP_FILE"
 
 echo "数据恢复完成"
