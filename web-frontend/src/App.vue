@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { theme } from 'ant-design-vue'
 import type { ThemeConfig } from 'ant-design-vue/es/config-provider/context'
+import { useAuth } from '@/composables/useAuth'
 
 const themeConfig: ThemeConfig = {
   token: {
@@ -15,12 +16,14 @@ const themeConfig: ThemeConfig = {
   },
   algorithm: theme.defaultAlgorithm,
 }
+
+const { authStore } = useAuth()
 </script>
 
 <template>
   <a-config-provider :theme="themeConfig">
     <a-layout style="min-height: 100vh">
-      <a-layout-sider :width="240" theme="dark">
+      <a-layout-sider v-if="authStore.isAuthenticated" :width="240" theme="dark">
         <div style="height: 64px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.125rem; font-weight: 600;">
           电力交易平台
         </div>
@@ -31,8 +34,12 @@ const themeConfig: ThemeConfig = {
         </a-menu>
       </a-layout-sider>
       <a-layout>
-        <a-layout-header style="background: #fff; padding: 0 24px; display: flex; align-items: center;">
+        <a-layout-header style="background: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between;">
           <span style="font-size: 1rem; font-weight: 500;">电力交易智能决策平台</span>
+          <div v-if="authStore.isAuthenticated" style="display: flex; align-items: center; gap: 12px;">
+            <span>{{ authStore.user?.display_name || authStore.user?.username }}</span>
+            <a-button size="small" @click="authStore.logout()">登出</a-button>
+          </div>
         </a-layout-header>
         <a-layout-content style="margin: 16px; padding: 24px; background: #fff; border-radius: 4px; flex: 1;">
           <router-view />

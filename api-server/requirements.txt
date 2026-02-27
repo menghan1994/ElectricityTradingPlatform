@@ -11,6 +11,10 @@ alembic==1.18.0
 pydantic==2.10.6
 python-decouple==3.8
 
+# Security
+bcrypt==5.0.0
+PyJWT==2.11.0
+
 # Async tasks
 celery==5.6.0
 redis==5.2.1

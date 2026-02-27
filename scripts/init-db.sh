@@ -46,14 +46,14 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 
     -- app_user 权限配置
     -- public schema: 完全权限
-    GRANT USAGE ON SCHEMA public TO app_user;
+    GRANT USAGE, CREATE ON SCHEMA public TO app_user;
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO app_user;
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO app_user;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO app_user;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO app_user;
 
     -- timeseries schema: 完全权限
-    GRANT USAGE ON SCHEMA timeseries TO app_user;
+    GRANT USAGE, CREATE ON SCHEMA timeseries TO app_user;
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA timeseries TO app_user;
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA timeseries TO app_user;
     ALTER DEFAULT PRIVILEGES IN SCHEMA timeseries GRANT ALL PRIVILEGES ON TABLES TO app_user;

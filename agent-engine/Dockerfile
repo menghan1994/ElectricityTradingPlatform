@@ -2,6 +2,7 @@
 FROM python:3.12-slim AS dev
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -18,6 +19,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8100", "--reload
 FROM python:3.12-slim AS production
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \

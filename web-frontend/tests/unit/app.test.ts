@@ -24,6 +24,6 @@ describe('App.vue', () => {
     })
 
     expect(wrapper.exists()).toBe(true)
-    expect(wrapper.text()).toContain('电力交易平台')
+    expect(wrapper.text()).toContain('电力交易智能决策平台')
   })
 })
