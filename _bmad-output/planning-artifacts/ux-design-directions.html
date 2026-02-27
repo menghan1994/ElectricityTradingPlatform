@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ElectricityTradingPlatform - UX Design Directions</title>
+<style>
+  :root {
+    --primary-1: #E8EFF7;
+    --primary-2: #C5D6EA;
+    --primary-3: #8BAFD4;
+    --primary-5: #3D6F9E;
+    --primary-6: #1B3A5C;
+    --primary-7: #142D47;
+    --primary-9: #0A1929;
+    --success: #52C41A;
+    --warning: #FA8C16;
+    --error: #FF4D4F;
+    --info: #1890FF;
+    --charge-green: #73D13D;
+    --discharge-orange: #FFA940;
+    --standby-gray: #BFBFBF;
+    --negative-price: #FF4D4F;
+    --high-price: #722ED1;
+    --bg: #F5F7FA;
+    --white: #FFFFFF;
+    --border: #E8E8E8;
+    --text-primary: #1F1F1F;
+    --text-secondary: #595959;
+    --text-tertiary: #8C8C8C;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+  }
+
+  .nav-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(26, 26, 46, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-bar h1 { font-size: 16px; color: #fff; font-weight: 600; }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 8px 20px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; color: #aaa; border: none; background: transparent;
+    transition: all 0.2s;
+  }
+  .nav-tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .nav-tab.active { color: #fff; background: var(--primary-6); }
+
+  .directions-container {
+    margin-top: 56px; padding: 32px;
+  }
+
+  .direction-section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .direction-section.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .direction-header {
+    text-align: center; margin-bottom: 32px;
+  }
+  .direction-header h2 {
+    font-size: 24px; color: #fff; margin-bottom: 8px;
+  }
+  .direction-header p {
+    font-size: 14px; color: #8C8C8C; max-width: 600px; margin: 0 auto;
+  }
+  .direction-tag {
+    display: inline-block; padding: 4px 12px; border-radius: 12px;
+    font-size: 12px; margin-bottom: 12px;
+    background: rgba(24, 144, 255, 0.15); color: var(--info);
+  }
+
+  /* ======== MOCKUP FRAME ======== */
+  .mockup-frame {
+    background: var(--bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    color: var(--text-primary);
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ======== DIRECTION A: Classic Three-Column ======== */
+  .dir-a-layout {
+    display: flex; height: 780px;
+  }
+  .dir-a-sidebar {
+    width: 240px; background: var(--primary-9);
+    color: #fff; flex-shrink: 0;
+  }
+  .dir-a-sidebar-header {
+    padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dir-a-sidebar-header .logo {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: var(--primary-6); display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+  }
+  .dir-a-nav-section {
+    padding: 12px 0;
+  }
+  .dir-a-nav-section-title {
+    font-size: 11px; color: rgba(255,255,255,0.4); padding: 4px 20px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .dir-a-nav-item {
+    padding: 10px 20px; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    color: rgba(255,255,255,0.65); transition: all 0.15s;
+  }
+  .dir-a-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .dir-a-nav-item.active {
+    background: rgba(24, 144, 255, 0.15); color: #fff;
+    border-right: 3px solid var(--info);
+  }
+  .dir-a-nav-icon { width: 16px; text-align: center; font-size: 14px; }
+
+  .dir-a-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .dir-a-topbar {
+    height: 48px; background: #fff; border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .dir-a-topbar-left { display: flex; align-items: center; gap: 12px; }
+  .dir-a-breadcrumb { font-size: 13px; color: var(--text-tertiary); }
+  .dir-a-breadcrumb span { color: var(--text-primary); font-weight: 500; }
+  .dir-a-topbar-right { display: flex; align-items: center; gap: 12px; }
+  .dir-a-station-select {
+    padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px;
+    font-size: 13px; background: #fff; color: var(--text-primary);
+  }
+  .dir-a-date-select {
+    padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px;
+    font-size: 13px; background: #fff; color: var(--text-primary);
+  }
+
+  .dir-a-content-area {
+    flex: 1; display: flex; overflow: hidden;
+  }
+  .dir-a-center {
+    flex: 1; padding: 16px; overflow-y: auto;
+  }
+  .dir-a-right-panel {
+    width: 320px; background: #fff; border-left: 1px solid var(--border);
+    flex-shrink: 0; overflow-y: auto;
+  }
+
+  /* Steps Progress */
+  .steps-bar {
+    background: #fff; border-radius: 4px; padding: 12px 16px;
+    margin-bottom: 12px; border: 1px solid var(--border);
+  }
+  .steps-bar-title {
+    font-size: 13px; font-weight: 600; margin-bottom: 10px;
+    color: var(--text-primary);
+  }
+  .steps-row { display: flex; align-items: center; gap: 0; }
+  .step-item {
+    display: flex; align-items: center; gap: 6px; font-size: 12px;
+    color: var(--text-tertiary); flex: 1; position: relative;
+  }
+  .step-item::after {
+    content: ''; flex: 1; height: 1px; background: var(--border); margin: 0 8px;
+  }
+  .step-item:last-child::after { display: none; }
+  .step-dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; flex-shrink: 0;
+  }
+  .step-item.done .step-dot { background: var(--success); color: #fff; }
+  .step-item.active .step-dot { background: var(--info); color: #fff; }
+  .step-item.active { color: var(--info); font-weight: 500; }
+  .step-item.done { color: var(--success); }
+  .step-item.waiting .step-dot { background: #f0f0f0; color: var(--text-tertiary); }
+  .step-time { font-size: 10px; color: var(--text-tertiary); margin-left: 2px; }
+
+  /* Summary Cards */
+  .summary-cards { display: flex; gap: 12px; margin-bottom: 12px; }
+  .summary-card {
+    flex: 1; background: #fff; border-radius: 4px; padding: 12px;
+    border: 1px solid var(--border);
+  }
+  .summary-card-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 4px; }
+  .summary-card-value {
+    font-size: 20px; font-weight: 600;
+    font-family: "JetBrains Mono", Consolas, monospace;
+  }
+  .summary-card-value.positive { color: var(--success); }
+  .summary-card-value.warning { color: var(--warning); }
+  .summary-card-value.info { color: var(--info); }
+  .summary-card-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* 96-Period Grid */
+  .period-grid {
+    background: #fff; border-radius: 4px; border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .period-grid-header {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .period-grid-title { font-size: 13px; font-weight: 600; }
+  .period-grid-actions { display: flex; gap: 8px; }
+  .btn-primary {
+    padding: 4px 16px; background: var(--primary-6); color: #fff;
+    border: none; border-radius: 4px; font-size: 12px; cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--primary-7); }
+  .btn-outline {
+    padding: 4px 16px; background: #fff; color: var(--primary-6);
+    border: 1px solid var(--primary-6); border-radius: 4px;
+    font-size: 12px; cursor: pointer;
+  }
+
+  .grid-table { width: 100%; border-collapse: collapse; }
+  .grid-table th {
+    padding: 6px 8px; font-size: 11px; font-weight: 600;
+    background: #FAFAFA; border-bottom: 1px solid var(--border);
+    text-align: center; color: var(--text-secondary);
+  }
+  .grid-table td {
+    padding: 4px 8px; font-size: 13px; text-align: center;
+    border-bottom: 1px solid #f5f5f5;
+    font-family: "JetBrains Mono", Consolas, monospace;
+  }
+  .grid-table tr:hover { background: var(--primary-1); }
+  .grid-table .cell-negative { background: rgba(255, 77, 79, 0.08); color: var(--error); }
+  .grid-table .cell-warning { background: rgba(250, 140, 22, 0.08); }
+  .grid-table .cell-edited {
+    background: rgba(250, 140, 22, 0.08);
+    position: relative;
+  }
+  .grid-table .cell-edited::after {
+    content: '✎'; position: absolute; top: 2px; right: 4px;
+    font-size: 9px; color: var(--warning);
+  }
+  .grid-table .period-col { text-align: left; font-weight: 500; color: var(--text-secondary); font-size: 12px; }
+  .grid-table .time-col { color: var(--text-tertiary); font-size: 11px; }
+
+  /* Agent Panel */
+  .agent-panel { padding: 0; }
+  .agent-panel-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+  }
+  .agent-item {
+    border-bottom: 1px solid #f5f5f5; cursor: pointer;
+  }
+  .agent-item-header {
+    padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+  }
+  .agent-item-header:hover { background: #FAFAFA; }
+  .agent-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .agent-dot.done { background: var(--success); }
+  .agent-name { flex: 1; font-weight: 500; color: var(--text-primary); }
+  .agent-summary { font-size: 12px; color: var(--text-secondary); font-weight: 400; }
+  .agent-arrow { color: var(--text-tertiary); font-size: 10px; }
+  .agent-detail {
+    padding: 0 16px 12px 32px; font-size: 12px; color: var(--text-secondary);
+    line-height: 1.8; display: none;
+  }
+  .agent-detail.expanded { display: block; }
+  .agent-detail .factor {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; background: var(--primary-1); border-radius: 3px;
+    margin: 2px 4px 2px 0; font-size: 11px; color: var(--primary-6);
+  }
+  .agent-detail .arrow-link { color: var(--info); }
+
+  /* ======== DIRECTION B: Center Focus ======== */
+  .dir-b-layout { display: flex; height: 780px; }
+  .dir-b-icon-sidebar {
+    width: 56px; background: var(--primary-9); flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px 0;
+  }
+  .dir-b-icon-logo {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--primary-6); display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 24px;
+  }
+  .dir-b-icon-item {
+    width: 40px; height: 40px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.4); font-size: 18px; cursor: pointer;
+    margin-bottom: 4px; transition: all 0.15s;
+  }
+  .dir-b-icon-item:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .dir-b-icon-item.active { color: #fff; background: rgba(24, 144, 255, 0.2); }
+
+  .dir-b-main { flex: 1; display: flex; flex-direction: column; }
+  .dir-b-topbar {
+    height: 52px; background: #fff; border-bottom: 1px solid var(--border);
+    padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .dir-b-topbar h3 { font-size: 16px; font-weight: 600; }
+  .dir-b-topbar-actions { display: flex; align-items: center; gap: 12px; }
+  .dir-b-content { flex: 1; padding: 20px 24px; overflow-y: auto; background: var(--bg); }
+
+  /* Wider grid for direction B */
+  .dir-b-grid-container {
+    background: #fff; border-radius: 4px; border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .dir-b-chart-row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .dir-b-chart-card {
+    flex: 1; background: #fff; border-radius: 4px;
+    border: 1px solid var(--border); padding: 12px;
+  }
+  .dir-b-chart-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+  .dir-b-chart-area {
+    height: 120px; background: linear-gradient(180deg, var(--primary-1) 0%, rgba(232,239,247,0) 100%);
+    border-radius: 4px; position: relative; overflow: hidden;
+  }
+  .dir-b-chart-line {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 100%;
+  }
+
+  /* Drawer */
+  .dir-b-drawer-overlay {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: 380px; background: #fff;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.08);
+    z-index: 10;
+  }
+  .dir-b-drawer-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .dir-b-drawer-header h4 { font-size: 14px; font-weight: 600; }
+  .dir-b-drawer-close { cursor: pointer; color: var(--text-tertiary); font-size: 16px; }
+
+  /* ======== DIRECTION C: Dashboard Cards ======== */
+  .dir-c-layout { display: flex; height: 780px; }
+  .dir-c-main { flex: 1; display: flex; flex-direction: column; }
+  .dir-c-content { flex: 1; padding: 16px; overflow-y: auto; background: var(--bg); }
+  .dir-c-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+  .dir-c-grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .dir-c-card {
+    background: #fff; border-radius: 4px; border: 1px solid var(--border);
+    padding: 12px;
+  }
+  .dir-c-card-title {
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .dir-c-card-more { font-size: 11px; color: var(--info); cursor: pointer; }
+
+  /* SOC Gauge */
+  .soc-gauge {
+    width: 100px; height: 100px; margin: 8px auto;
+    border-radius: 50%; position: relative;
+    background: conic-gradient(var(--charge-green) 0% 65%, #f0f0f0 65% 100%);
+  }
+  .soc-gauge-inner {
+    position: absolute; inset: 10px; border-radius: 50%;
+    background: #fff; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .soc-gauge-value {
+    font-size: 22px; font-weight: 600; color: var(--text-primary);
+    font-family: "JetBrains Mono", Consolas, monospace;
+  }
+  .soc-gauge-label { font-size: 10px; color: var(--text-tertiary); }
+
+  /* Mini chart placeholder */
+  .mini-chart {
+    height: 60px; position: relative; margin-top: 8px;
+  }
+  .mini-chart-svg { width: 100%; height: 100%; }
+
+  /* ======== DIRECTION D: Narrative Backtest ======== */
+  .dir-d-layout { display: flex; height: 780px; }
+  .dir-d-main { flex: 1; display: flex; flex-direction: column; }
+  .dir-d-content {
+    flex: 1; overflow-y: auto; background: var(--bg);
+  }
+  .dir-d-hero {
+    background: linear-gradient(135deg, var(--primary-9) 0%, var(--primary-6) 100%);
+    padding: 48px 0; text-align: center; color: #fff;
+  }
+  .dir-d-hero-label {
+    font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 8px;
+  }
+  .dir-d-hero-value {
+    font-size: 56px; font-weight: 700;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    margin-bottom: 8px;
+  }
+  .dir-d-hero-sub {
+    font-size: 14px; color: rgba(255,255,255,0.7);
+  }
+  .dir-d-hero-badge {
+    display: inline-block; padding: 4px 12px; border-radius: 12px;
+    background: rgba(82, 196, 26, 0.2); color: var(--success);
+    font-size: 13px; margin-top: 12px;
+  }
+  .dir-d-section {
+    max-width: 1000px; margin: 0 auto; padding: 32px 24px;
+  }
+  .dir-d-section-title {
+    font-size: 18px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 20px; position: relative; padding-left: 16px;
+  }
+  .dir-d-section-title::before {
+    content: ''; position: absolute; left: 0; top: 4px;
+    width: 4px; height: 18px; background: var(--primary-6); border-radius: 2px;
+  }
+
+  /* Waterfall Chart */
+  .waterfall-chart {
+    display: flex; align-items: flex-end; gap: 0; height: 200px;
+    padding: 0 20px; margin-bottom: 16px;
+  }
+  .waterfall-bar-group {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; position: relative;
+  }
+  .waterfall-bar {
+    width: 56px; border-radius: 4px 4px 0 0; position: relative;
+  }
+  .waterfall-bar.start { background: var(--primary-3); }
+  .waterfall-bar.increase { background: var(--success); }
+  .waterfall-bar.decrease { background: var(--error); }
+  .waterfall-bar.total { background: var(--primary-6); }
+  .waterfall-value {
+    font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 4px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    color: var(--text-primary);
+  }
+  .waterfall-label {
+    font-size: 11px; color: var(--text-secondary); margin-top: 8px;
+    text-align: center;
+  }
+  .waterfall-connector {
+    position: absolute; top: 0; right: -50%; width: 50%;
+    border-top: 1px dashed var(--border);
+  }
+
+  /* Trend Chart */
+  .trend-chart-area {
+    height: 180px; background: #fff; border-radius: 4px;
+    border: 1px solid var(--border); padding: 16px;
+    margin-bottom: 16px; position: relative;
+  }
+  .trend-legend { display: flex; gap: 24px; margin-bottom: 12px; }
+  .trend-legend-item {
+    display: flex; align-items: center; gap: 6px; font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .trend-legend-dot {
+    width: 10px; height: 3px; border-radius: 2px;
+  }
+
+  /* Export button */
+  .dir-d-export {
+    text-align: center; padding: 24px;
+  }
+  .btn-export {
+    padding: 10px 32px; background: var(--primary-6); color: #fff;
+    border: none; border-radius: 4px; font-size: 14px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-export:hover { background: var(--primary-7); }
+
+  /* Data source annotation */
+  .data-source {
+    text-align: center; padding: 12px;
+    font-size: 11px; color: var(--text-tertiary);
+    border-top: 1px solid var(--border);
+  }
+
+  /* ======== Comparison Section ======== */
+  .comparison-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px;
+    max-width: 1400px; margin: 0 auto;
+  }
+  .comparison-card {
+    background: rgba(255,255,255,0.05); border-radius: 12px;
+    padding: 24px; border: 1px solid rgba(255,255,255,0.1);
+  }
+  .comparison-card h3 {
+    font-size: 16px; color: #fff; margin-bottom: 8px;
+  }
+  .comparison-card .tag {
+    display: inline-block; padding: 3px 10px; border-radius: 10px;
+    font-size: 11px; margin-bottom: 12px;
+  }
+  .comparison-card .pros, .comparison-card .cons {
+    font-size: 13px; line-height: 1.8;
+  }
+  .comparison-card .pros { color: var(--success); }
+  .comparison-card .cons { color: var(--text-tertiary); }
+
+  /* SVG Charts */
+  svg text { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  svg .mono { font-family: "JetBrains Mono", Consolas, monospace; }
+
+  /* Responsive note */
+  .resolution-note {
+    text-align: center; padding: 8px; font-size: 11px;
+    color: var(--text-tertiary); background: rgba(255,255,255,0.03);
+  }
+
+  /* Charge/Discharge timeline */
+  .timeline-row { display: flex; height: 24px; margin-bottom: 2px; align-items: center; }
+  .timeline-label { width: 50px; font-size: 11px; color: var(--text-secondary); text-align: right; padding-right: 8px; }
+  .timeline-bar { flex: 1; display: flex; height: 16px; border-radius: 2px; overflow: hidden; }
+  .timeline-segment { height: 100%; }
+  .timeline-segment.charge { background: var(--charge-green); }
+  .timeline-segment.discharge { background: var(--discharge-orange); }
+  .timeline-segment.standby { background: #f0f0f0; }
+</style>
+</head>
+<body>
+
+<div class="nav-bar">
+  <h1>ElectricityTradingPlatform · UX 设计方向探索</h1>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showDirection('a')">方向A 经典三栏</button>
+    <button class="nav-tab" onclick="showDirection('b')">方向B 中央聚焦</button>
+    <button class="nav-tab" onclick="showDirection('c')">方向C 仪表盘式</button>
+    <button class="nav-tab" onclick="showDirection('d')">方向D 叙事回测</button>
+    <button class="nav-tab" onclick="showDirection('compare')">对比总结</button>
+  </div>
+</div>
+
+<div class="directions-container">
+
+<!-- ==================== DIRECTION A ==================== -->
+<div id="dir-a" class="direction-section active">
+  <div class="direction-header">
+    <span class="direction-tag">操作路径 · 交易工作台</span>
+    <h2>方向A：经典三栏工作台</h2>
+    <p>左侧电站列表 + 中央96时段报量报价网格 + 右侧Agent决策链路面板，深蓝侧边栏导航，强调操作效率</p>
+  </div>
+
+  <div class="mockup-frame">
+    <div class="dir-a-layout">
+      <!-- Sidebar -->
+      <div class="dir-a-sidebar">
+        <div class="dir-a-sidebar-header">
+          <div class="logo">E</div>
+          <span>电力交易平台</span>
+        </div>
+        <div class="dir-a-nav-section">
+          <div class="dir-a-nav-section-title">交易管理</div>
+          <div class="dir-a-nav-item active">
+            <span class="dir-a-nav-icon">📊</span> 交易工作台
+          </div>
+          <div class="dir-a-nav-item">
+            <span class="dir-a-nav-icon">🔋</span> 储能调度
+          </div>
+          <div class="dir-a-nav-item">
+            <span class="dir-a-nav-icon">📈</span> 收益看板
+          </div>
+        </div>
+        <div class="dir-a-nav-section">
+          <div class="dir-a-nav-section-title">分析</div>
+          <div class="dir-a-nav-item">
+            <span class="dir-a-nav-icon">📉</span> 回测分析
+          </div>
+          <div class="dir-a-nav-item">
+            <span class="dir-a-nav-icon">⚡</span> 偏差跟踪
+          </div>
+        </div>
+        <div class="dir-a-nav-section">
+          <div class="dir-a-nav-section-title">系统</div>
+          <div class="dir-a-nav-item">
+            <span class="dir-a-nav-icon">⚙️</span> 系统配置
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Area -->
+      <div class="dir-a-main">
+        <div class="dir-a-topbar">
+          <div class="dir-a-topbar-left">
+            <div class="dir-a-breadcrumb">交易管理 / <span>交易工作台</span></div>
+          </div>
+          <div class="dir-a-topbar-right">
+            <select class="dir-a-station-select">
+              <option>风电场A - 山东 (50MW, 含储能)</option>
+            </select>
+            <input type="date" class="dir-a-date-select" value="2026-02-27">
+            <button class="btn-primary">⚡ 生成AI报量报价建议</button>
+          </div>
+        </div>
+
+        <div class="dir-a-content-area">
+          <div class="dir-a-center">
+            <!-- Agent Steps Progress -->
+            <div class="steps-bar">
+              <div class="steps-bar-title">Agent 协作进度</div>
+              <div class="steps-row">
+                <div class="step-item done">
+                  <div class="step-dot">✓</div>
+                  <span>功率预测</span>
+                  <span class="step-time">3.2s</span>
+                </div>
+                <div class="step-item done">
+                  <div class="step-dot">✓</div>
+                  <span>电价预测</span>
+                  <span class="step-time">4.1s</span>
+                </div>
+                <div class="step-item done">
+                  <div class="step-dot">✓</div>
+                  <span>报价策略</span>
+                  <span class="step-time">8.5s</span>
+                </div>
+                <div class="step-item done">
+                  <div class="step-dot">✓</div>
+                  <span>储能调度</span>
+                  <span class="step-time">6.3s</span>
+                </div>
+                <div class="step-item done">
+                  <div class="step-dot">✓</div>
+                  <span>风控审计</span>
+                  <span class="step-time">2.1s</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+              <div class="summary-card">
+                <div class="summary-card-label">预估日收益</div>
+                <div class="summary-card-value positive">+¥12,850</div>
+                <div class="summary-card-sub">较昨日 +8.3%</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-card-label">需关注时段</div>
+                <div class="summary-card-value warning">6</div>
+                <div class="summary-card-sub">含2个负电价时段</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-card-label">AI置信度</div>
+                <div class="summary-card-value info">高</div>
+                <div class="summary-card-sub">89% 时段高置信</div>
+              </div>
+            </div>
+
+            <!-- 96 Period Grid -->
+            <div class="period-grid">
+              <div class="period-grid-header">
+                <div class="period-grid-title">96时段报量报价建议</div>
+                <div class="period-grid-actions">
+                  <button class="btn-outline">导出</button>
+                  <button class="btn-primary">✓ 确认全部</button>
+                </div>
+              </div>
+              <table class="grid-table">
+                <thead>
+                  <tr>
+                    <th>时段</th>
+                    <th>时间</th>
+                    <th>预测出力(MW)</th>
+                    <th>报量(MW)</th>
+                    <th>电价预测(¥)</th>
+                    <th>报价(¥/MWh)</th>
+                    <th>储能(MW)</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="period-col">1</td>
+                    <td class="time-col">00:00-00:15</td>
+                    <td>12.5</td>
+                    <td>12.0</td>
+                    <td>285.00</td>
+                    <td>280.00</td>
+                    <td style="color:var(--charge-green)">+5.0 充</td>
+                    <td><span style="color:var(--success);font-size:11px">● 正常</span></td>
+                  </tr>
+                  <tr>
+                    <td class="period-col">2</td>
+                    <td class="time-col">00:15-00:30</td>
+                    <td>11.8</td>
+                    <td>11.5</td>
+                    <td>278.50</td>
+                    <td>275.00</td>
+                    <td style="color:var(--charge-green)">+5.0 充</td>
+                    <td><span style="color:var(--success);font-size:11px">● 正常</span></td>
+                  </tr>
+                  <tr class="cell-warning">
+                    <td class="period-col">3</td>
+                    <td class="time-col">00:30-00:45</td>
+                    <td>10.2</td>
+                    <td>9.8</td>
+                    <td>245.00</td>
+                    <td style="font-weight:600;color:var(--warning)">240.00</td>
+                    <td style="color:var(--standby-gray)">0.0 待</td>
+                    <td><span style="color:var(--warning);font-size:11px">⚠ 关注</span></td>
+                  </tr>
+                  <tr>
+                    <td class="period-col">4</td>
+                    <td class="time-col">00:45-01:00</td>
+                    <td>9.5</td>
+                    <td>9.0</td>
+                    <td>252.00</td>
+                    <td>248.00</td>
+                    <td style="color:var(--standby-gray)">0.0 待</td>
+                    <td><span style="color:var(--success);font-size:11px">● 正常</span></td>
+                  </tr>
+                  <tr class="cell-negative">
+                    <td class="period-col" style="color:var(--error);font-weight:600">32</td>
+                    <td class="time-col">07:45-08:00</td>
+                    <td>38.5</td>
+                    <td>0.0</td>
+                    <td style="color:var(--error);font-weight:600">-15.00</td>
+                    <td style="color:var(--error);font-weight:600">0.00</td>
+                    <td style="color:var(--charge-green);font-weight:600">+15.0 充</td>
+                    <td><span style="color:var(--error);font-size:11px">⛔ 负电价</span></td>
+                  </tr>
+                  <tr class="cell-negative">
+                    <td class="period-col" style="color:var(--error);font-weight:600">33</td>
+                    <td class="time-col">08:00-08:15</td>
+                    <td>40.2</td>
+                    <td>0.0</td>
+                    <td style="color:var(--error);font-weight:600">-22.50</td>
+                    <td style="color:var(--error);font-weight:600">0.00</td>
+                    <td style="color:var(--charge-green);font-weight:600">+15.0 充</td>
+                    <td><span style="color:var(--error);font-size:11px">⛔ 负电价</span></td>
+                  </tr>
+                  <tr>
+                    <td class="period-col" style="color:var(--high-price)">56</td>
+                    <td class="time-col">13:45-14:00</td>
+                    <td>28.0</td>
+                    <td>28.0</td>
+                    <td style="color:var(--high-price);font-weight:600">520.00</td>
+                    <td style="color:var(--high-price);font-weight:600">515.00</td>
+                    <td style="color:var(--discharge-orange);font-weight:600">-10.0 放</td>
+                    <td><span style="color:var(--high-price);font-size:11px">★ 高价</span></td>
+                  </tr>
+                  <tr>
+                    <td class="period-col" style="color:var(--high-price)">57</td>
+                    <td class="time-col">14:00-14:15</td>
+                    <td>26.5</td>
+                    <td class="cell-edited">27.0</td>
+                    <td style="color:var(--high-price);font-weight:600">498.00</td>
+                    <td class="cell-edited" style="font-weight:600;color:var(--warning)">505.00</td>
+                    <td style="color:var(--discharge-orange);font-weight:600">-10.0 放</td>
+                    <td><span style="color:var(--warning);font-size:11px">✎ 已调整</span></td>
+                  </tr>
+                  <tr>
+                    <td colspan="8" style="text-align:center;color:var(--text-tertiary);font-size:12px;padding:12px">
+                      ··· 共96时段，此处省略中间时段 ···
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right Panel: Agent Chain -->
+          <div class="dir-a-right-panel">
+            <div class="agent-panel">
+              <div class="agent-panel-header">Agent 决策链路</div>
+
+              <div class="agent-item">
+                <div class="agent-item-header" onclick="this.nextElementSibling.classList.toggle('expanded')">
+                  <span class="agent-dot done"></span>
+                  <span class="agent-name">功率预测Agent</span>
+                  <span class="agent-arrow">▼</span>
+                </div>
+                <div class="agent-detail expanded">
+                  <strong>结论：</strong>明日出力预计下降15%<br>
+                  <div style="margin-top:6px">
+                    <span class="factor">风速下降 ↓</span>
+                    <span class="factor">温度偏低</span>
+                    <span class="factor">历史同期参考</span>
+                  </div>
+                  <div style="margin-top:6px;color:var(--text-tertiary)">
+                    风速下降 → 出力降低 → <span class="arrow-link">建议报量保守</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="agent-item">
+                <div class="agent-item-header" onclick="this.nextElementSibling.classList.toggle('expanded')">
+                  <span class="agent-dot done"></span>
+                  <span class="agent-name">电价预测Agent</span>
+                  <span class="agent-arrow">▶</span>
+                </div>
+                <div class="agent-detail">
+                  <strong>结论：</strong>明日日前电价整体走高，时段32-36出现负电价风险<br>
+                  <div style="margin-top:6px">
+                    <span class="factor">供需紧张</span>
+                    <span class="factor">风电大发</span>
+                    <span class="factor">负电价预警</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="agent-item">
+                <div class="agent-item-header" onclick="this.nextElementSibling.classList.toggle('expanded')">
+                  <span class="agent-dot done"></span>
+                  <span class="agent-name">报价策略Agent</span>
+                  <span class="agent-arrow">▶</span>
+                </div>
+                <div class="agent-detail">
+                  <strong>结论：</strong>建议高价时段报价上浮至515元/MWh，负电价时段零出力<br>
+                </div>
+              </div>
+
+              <div class="agent-item">
+                <div class="agent-item-header" onclick="this.nextElementSibling.classList.toggle('expanded')">
+                  <span class="agent-dot done"></span>
+                  <span class="agent-name">储能调度Agent</span>
+                  <span class="agent-arrow">▶</span>
+                </div>
+                <div class="agent-detail">
+                  <strong>结论：</strong>负电价时段充电储能（+15MW），高价时段放电套利（-10MW）<br>
+                  <div style="margin-top:6px">
+                    <span class="factor">SOC 65%</span>
+                    <span class="factor">充电窗口</span>
+                    <span class="factor">套利收益+¥3,200</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="agent-item">
+                <div class="agent-item-header" onclick="this.nextElementSibling.classList.toggle('expanded')">
+                  <span class="agent-dot done"></span>
+                  <span class="agent-name">风控审计Agent</span>
+                  <span class="agent-arrow">▶</span>
+                </div>
+                <div class="agent-detail">
+                  <strong>结论：</strong>全部时段通过合规检查，无超限风险<br>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DIRECTION B ==================== -->
+<div id="dir-b" class="direction-section">
+  <div class="direction-header">
+    <span class="direction-tag">操作路径 · 交易工作台</span>
+    <h2>方向B：中央聚焦式</h2>
+    <p>极简图标导航，最大化中央内容区域，Agent链路通过右侧抽屉按需展开，强调报量报价网格的视觉空间</p>
+  </div>
+
+  <div class="mockup-frame">
+    <div class="dir-b-layout" style="position:relative">
+      <!-- Icon Sidebar -->
+      <div class="dir-b-icon-sidebar">
+        <div class="dir-b-icon-logo">E</div>
+        <div class="dir-b-icon-item active" title="交易工作台">📊</div>
+        <div class="dir-b-icon-item" title="储能调度">🔋</div>
+        <div class="dir-b-icon-item" title="收益看板">📈</div>
+        <div class="dir-b-icon-item" title="回测分析">📉</div>
+        <div class="dir-b-icon-item" title="偏差跟踪">⚡</div>
+        <div style="flex:1"></div>
+        <div class="dir-b-icon-item" title="系统配置">⚙️</div>
+      </div>
+
+      <!-- Main -->
+      <div class="dir-b-main">
+        <div class="dir-b-topbar">
+          <div>
+            <h3>交易工作台</h3>
+            <span style="font-size:12px;color:var(--text-tertiary)">风电场A - 山东 · 2026-02-27</span>
+          </div>
+          <div class="dir-b-topbar-actions">
+            <button class="btn-outline" onclick="document.getElementById('drawer-b').style.display='block'">🔍 查看Agent链路</button>
+            <button class="btn-primary">✓ 确认全部并提交</button>
+          </div>
+        </div>
+
+        <div class="dir-b-content">
+          <!-- Steps inline -->
+          <div class="steps-bar" style="margin-bottom:16px">
+            <div class="steps-row">
+              <div class="step-item done">
+                <div class="step-dot">✓</div>
+                <span>功率预测 3.2s</span>
+              </div>
+              <div class="step-item done">
+                <div class="step-dot">✓</div>
+                <span>电价预测 4.1s</span>
+              </div>
+              <div class="step-item done">
+                <div class="step-dot">✓</div>
+                <span>报价策略 8.5s</span>
+              </div>
+              <div class="step-item done">
+                <div class="step-dot">✓</div>
+                <span>储能调度 6.3s</span>
+              </div>
+              <div class="step-item done">
+                <div class="step-dot">✓</div>
+                <span>风控审计 2.1s</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="dir-b-chart-row">
+            <div class="dir-b-chart-card">
+              <div class="dir-b-chart-title">功率预测 vs 报量 (MW)</div>
+              <svg width="100%" height="100" viewBox="0 0 400 100">
+                <polyline points="0,80 30,75 60,60 90,45 120,30 150,25 180,35 210,50 240,55 270,45 300,35 330,40 360,55 400,70" stroke="#1B3A5C" stroke-width="2" fill="none"/>
+                <polyline points="0,82 30,78 60,62 90,48 120,35 150,28 180,38 210,52 240,58 270,48 300,38 330,43 360,58 400,72" stroke="#8BAFD4" stroke-width="2" fill="none" stroke-dasharray="4,2"/>
+              </svg>
+            </div>
+            <div class="dir-b-chart-card">
+              <div class="dir-b-chart-title">电价预测 (¥/MWh)</div>
+              <svg width="100%" height="100" viewBox="0 0 400 100">
+                <polyline points="0,50 30,55 60,60 90,70 120,85 150,90 180,65 210,40 240,30 270,25 300,35 330,50 360,60 400,55" stroke="#722ED1" stroke-width="2" fill="none"/>
+                <rect x="110" y="80" width="50" height="20" rx="2" fill="rgba(255,77,79,0.1)" stroke="var(--error)" stroke-width="0.5"/>
+                <text x="135" y="93" font-size="8" fill="var(--error)" text-anchor="middle">负电价</text>
+              </svg>
+            </div>
+            <div class="dir-b-chart-card">
+              <div class="dir-b-chart-title">储能SOC状态</div>
+              <div style="display:flex;align-items:center;justify-content:center;height:80px">
+                <div class="soc-gauge" style="width:80px;height:80px">
+                  <div class="soc-gauge-inner" style="inset:8px">
+                    <div class="soc-gauge-value" style="font-size:18px">65%</div>
+                    <div class="soc-gauge-label">SOC</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wide Grid -->
+          <div class="dir-b-grid-container">
+            <div class="period-grid-header">
+              <div class="period-grid-title">96时段报量报价建议 <span style="color:var(--text-tertiary);font-size:12px;font-weight:400">· 总计24小时</span></div>
+              <div class="period-grid-actions">
+                <div class="summary-cards" style="gap:8px;margin:0">
+                  <div style="text-align:center;padding:0 12px">
+                    <div style="font-size:11px;color:var(--text-tertiary)">预估收益</div>
+                    <div style="font-size:16px;font-weight:600;color:var(--success);font-family:JetBrains Mono,monospace">+¥12,850</div>
+                  </div>
+                  <div style="text-align:center;padding:0 12px;border-left:1px solid var(--border)">
+                    <div style="font-size:11px;color:var(--text-tertiary)">关注时段</div>
+                    <div style="font-size:16px;font-weight:600;color:var(--warning);font-family:JetBrains Mono,monospace">6</div>
+                  </div>
+                </div>
+                <button class="btn-outline">导出</button>
+              </div>
+            </div>
+            <table class="grid-table">
+              <thead>
+                <tr>
+                  <th>时段</th>
+                  <th>时间</th>
+                  <th>预测出力(MW)</th>
+                  <th>报量(MW)</th>
+                  <th>电价预测(¥)</th>
+                  <th>报价(¥/MWh)</th>
+                  <th>储能(MW)</th>
+                  <th>预估收益(¥)</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="period-col">1</td><td class="time-col">00:00-00:15</td>
+                  <td>12.5</td><td>12.0</td><td>285.00</td><td>280.00</td>
+                  <td style="color:var(--charge-green)">+5.0</td>
+                  <td style="color:var(--success)">840</td>
+                  <td><span style="color:var(--success);font-size:11px">●</span></td>
+                </tr>
+                <tr class="cell-negative">
+                  <td class="period-col" style="color:var(--error)">32</td><td class="time-col">07:45-08:00</td>
+                  <td>38.5</td><td style="color:var(--error)">0.0</td><td style="color:var(--error)">-15.00</td><td style="color:var(--error)">0.00</td>
+                  <td style="color:var(--charge-green);font-weight:600">+15.0</td>
+                  <td style="color:var(--success)">避损 578</td>
+                  <td><span style="color:var(--error);font-size:11px">⛔</span></td>
+                </tr>
+                <tr>
+                  <td class="period-col" style="color:var(--high-price)">56</td><td class="time-col">13:45-14:00</td>
+                  <td>28.0</td><td>28.0</td><td style="color:var(--high-price)">520.00</td><td style="color:var(--high-price)">515.00</td>
+                  <td style="color:var(--discharge-orange);font-weight:600">-10.0</td>
+                  <td style="color:var(--success);font-weight:600">5,150</td>
+                  <td><span style="color:var(--high-price);font-size:11px">★</span></td>
+                </tr>
+                <tr>
+                  <td colspan="9" style="text-align:center;color:var(--text-tertiary);font-size:12px;padding:12px">
+                    ··· 共96时段，此处展示关键时段 ···
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drawer (Agent Chain) -->
+      <div id="drawer-b" class="dir-b-drawer-overlay" style="display:none">
+        <div class="dir-b-drawer-header">
+          <h4>Agent 决策链路详情</h4>
+          <span class="dir-b-drawer-close" onclick="this.closest('.dir-b-drawer-overlay').style.display='none'">✕</span>
+        </div>
+        <div class="agent-panel">
+          <div class="agent-item">
+            <div class="agent-item-header" onclick="this.nextElementSibling.classList.toggle('expanded')">
+              <span class="agent-dot done"></span>
+              <span class="agent-name">功率预测Agent</span>
+              <span class="agent-summary">· 出力下降15%</span>
+              <span class="agent-arrow">▼</span>
+            </div>
+            <div class="agent-detail expanded">
+              <strong>关键因子：</strong><br>
+              <span class="factor">风速下降 3.2m/s→2.1m/s</span>
+              <span class="factor">温度偏低 -2°C</span><br>
+              <div style="margin-top:6px">
+                <strong>推理链路：</strong>气象数据分析 → 风速下降明显 → 参考历史同期 → 预计出力下降15%
+              </div>
+            </div>
+          </div>
+          <div class="agent-item">
+            <div class="agent-item-header">
+              <span class="agent-dot done"></span>
+              <span class="agent-name">电价预测Agent</span>
+              <span class="agent-summary">· 时段32-36负电价</span>
+              <span class="agent-arrow">▶</span>
+            </div>
+            <div class="agent-detail"></div>
+          </div>
+          <div class="agent-item">
+            <div class="agent-item-header">
+              <span class="agent-dot done"></span>
+              <span class="agent-name">报价策略Agent</span>
+              <span class="agent-summary">· 高价上浮至515</span>
+              <span class="agent-arrow">▶</span>
+            </div>
+            <div class="agent-detail"></div>
+          </div>
+          <div class="agent-item">
+            <div class="agent-item-header">
+              <span class="agent-dot done"></span>
+              <span class="agent-name">储能调度Agent</span>
+              <span class="agent-summary">· 套利+¥3,200</span>
+              <span class="agent-arrow">▶</span>
+            </div>
+            <div class="agent-detail"></div>
+          </div>
+          <div class="agent-item">
+            <div class="agent-item-header">
+              <span class="agent-dot done"></span>
+              <span class="agent-name">风控审计Agent</span>
+              <span class="agent-summary">· 全部通过</span>
+              <span class="agent-arrow">▶</span>
+            </div>
+            <div class="agent-detail"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DIRECTION C ==================== -->
+<div id="dir-c" class="direction-section">
+  <div class="direction-header">
+    <span class="direction-tag">操作路径 · 交易工作台</span>
+    <h2>方向C：仪表盘式</h2>
+    <p>卡片化布局，报量报价网格+功率预测+电价+Agent摘要+储能SOC平铺为多个仪表盘卡片，强调全局态势感知</p>
+  </div>
+
+  <div class="mockup-frame">
+    <div class="dir-c-layout">
+      <div class="dir-a-sidebar" style="width:200px">
+        <div class="dir-a-sidebar-header">
+          <div class="logo">E</div>
+          <span style="font-size:13px">电力交易平台</span>
+        </div>
+        <div class="dir-a-nav-section">
+          <div class="dir-a-nav-item active">
+            <span class="dir-a-nav-icon">📊</span> 交易工作台
+          </div>
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">🔋</span> 储能调度</div>
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">📈</span> 收益看板</div>
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">📉</span> 回测分析</div>
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">⚙️</span> 系统配置</div>
+        </div>
+      </div>
+      <div class="dir-c-main">
+        <div class="dir-a-topbar">
+          <div class="dir-a-topbar-left">
+            <span style="font-size:15px;font-weight:600">交易工作台</span>
+            <span style="font-size:12px;color:var(--text-tertiary)">风电场A · 2026-02-27</span>
+          </div>
+          <div class="dir-a-topbar-right">
+            <button class="btn-primary">⚡ 生成建议</button>
+          </div>
+        </div>
+        <div class="dir-c-content">
+          <!-- Top KPI row -->
+          <div class="dir-c-grid" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="dir-c-card" style="text-align:center">
+              <div class="summary-card-label">预估日收益</div>
+              <div class="summary-card-value positive" style="font-size:24px">+¥12,850</div>
+              <div class="summary-card-sub">较昨日 +8.3%</div>
+            </div>
+            <div class="dir-c-card" style="text-align:center">
+              <div class="summary-card-label">总报量</div>
+              <div class="summary-card-value" style="font-size:24px;color:var(--primary-6)">1,856 MWh</div>
+              <div class="summary-card-sub">96时段累计</div>
+            </div>
+            <div class="dir-c-card" style="text-align:center">
+              <div class="summary-card-label">需关注时段</div>
+              <div class="summary-card-value warning" style="font-size:24px">6</div>
+              <div class="summary-card-sub">2个负电价 + 4个需关注</div>
+            </div>
+            <div class="dir-c-card" style="text-align:center">
+              <div class="summary-card-label">储能套利预估</div>
+              <div class="summary-card-value positive" style="font-size:24px">+¥3,200</div>
+              <div class="summary-card-sub">充放电各4小时</div>
+            </div>
+          </div>
+
+          <!-- Charts + SOC row -->
+          <div class="dir-c-grid" style="grid-template-columns: 1fr 1fr 200px">
+            <div class="dir-c-card">
+              <div class="dir-c-card-title">
+                功率预测 & 报量曲线
+                <span class="dir-c-card-more">展开 ▸</span>
+              </div>
+              <svg width="100%" height="120" viewBox="0 0 400 120">
+                <polyline points="0,90 40,82 80,65 120,42 160,28 200,22 240,38 280,55 320,48 360,58 400,75" stroke="#1B3A5C" stroke-width="2" fill="none"/>
+                <polyline points="0,92 40,85 80,68 120,46 160,32 200,26 240,42 280,58 320,52 360,62 400,78" stroke="#8BAFD4" stroke-width="1.5" fill="none" stroke-dasharray="4,2"/>
+                <text x="10" y="110" font-size="9" fill="var(--text-tertiary)">00:00</text>
+                <text x="190" y="110" font-size="9" fill="var(--text-tertiary)">12:00</text>
+                <text x="380" y="110" font-size="9" fill="var(--text-tertiary)">24:00</text>
+              </svg>
+            </div>
+            <div class="dir-c-card">
+              <div class="dir-c-card-title">
+                电价预测曲线
+                <span class="dir-c-card-more">展开 ▸</span>
+              </div>
+              <svg width="100%" height="120" viewBox="0 0 400 120">
+                <rect x="100" y="0" width="60" height="120" fill="rgba(255,77,79,0.05)"/>
+                <polyline points="0,55 40,58 80,65 120,95 140,105 160,85 200,45 240,30 280,22 320,35 360,55 400,50" stroke="#722ED1" stroke-width="2" fill="none"/>
+                <text x="115" y="115" font-size="8" fill="var(--error)">负电价区间</text>
+              </svg>
+            </div>
+            <div class="dir-c-card" style="text-align:center">
+              <div class="dir-c-card-title">储能SOC</div>
+              <div class="soc-gauge">
+                <div class="soc-gauge-inner">
+                  <div class="soc-gauge-value">65%</div>
+                  <div class="soc-gauge-label">当前SOC</div>
+                </div>
+              </div>
+              <div style="margin-top:8px;font-size:11px;color:var(--text-tertiary)">
+                安全范围：10%-90%
+              </div>
+            </div>
+          </div>
+
+          <!-- Grid + Agent -->
+          <div class="dir-c-grid" style="grid-template-columns: 2fr 1fr">
+            <div class="dir-c-card" style="padding:0;overflow:hidden">
+              <div class="period-grid-header" style="padding:10px 12px">
+                <div class="period-grid-title" style="font-size:12px">96时段报量报价</div>
+                <button class="btn-primary" style="font-size:11px;padding:3px 12px">✓ 确认全部</button>
+              </div>
+              <table class="grid-table">
+                <thead>
+                  <tr>
+                    <th>时段</th><th>报量</th><th>报价</th><th>储能</th><th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="period-col">1</td><td>12.0</td><td>280.00</td>
+                    <td style="color:var(--charge-green)">+5.0</td><td style="color:var(--success);font-size:10px">●</td>
+                  </tr>
+                  <tr class="cell-negative">
+                    <td class="period-col" style="color:var(--error)">32</td>
+                    <td style="color:var(--error)">0.0</td><td style="color:var(--error)">0.00</td>
+                    <td style="color:var(--charge-green)">+15.0</td><td style="color:var(--error);font-size:10px">⛔</td>
+                  </tr>
+                  <tr>
+                    <td class="period-col" style="color:var(--high-price)">56</td>
+                    <td>28.0</td><td style="color:var(--high-price)">515.00</td>
+                    <td style="color:var(--discharge-orange)">-10.0</td><td style="color:var(--high-price);font-size:10px">★</td>
+                  </tr>
+                  <tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);font-size:11px;padding:8px">··· 共96时段 ···</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="dir-c-card" style="padding:0;overflow:hidden">
+              <div class="agent-panel-header" style="font-size:12px">Agent 决策摘要</div>
+              <div style="padding:8px 12px">
+                <div style="margin-bottom:8px">
+                  <div style="font-size:11px;font-weight:600;color:var(--text-primary);margin-bottom:2px">
+                    <span style="color:var(--success)">●</span> 功率预测
+                  </div>
+                  <div style="font-size:11px;color:var(--text-secondary)">出力下降15%，风速下降</div>
+                </div>
+                <div style="margin-bottom:8px">
+                  <div style="font-size:11px;font-weight:600;color:var(--text-primary);margin-bottom:2px">
+                    <span style="color:var(--success)">●</span> 电价预测
+                  </div>
+                  <div style="font-size:11px;color:var(--text-secondary)">整体走高，时段32-36负电价</div>
+                </div>
+                <div style="margin-bottom:8px">
+                  <div style="font-size:11px;font-weight:600;color:var(--text-primary);margin-bottom:2px">
+                    <span style="color:var(--success)">●</span> 储能调度
+                  </div>
+                  <div style="font-size:11px;color:var(--text-secondary)">负电价充电+高价放电，套利+¥3,200</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;font-weight:600;color:var(--text-primary);margin-bottom:2px">
+                    <span style="color:var(--success)">●</span> 风控审计
+                  </div>
+                  <div style="font-size:11px;color:var(--text-secondary)">全部通过</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DIRECTION D ==================== -->
+<div id="dir-d" class="direction-section">
+  <div class="direction-header">
+    <span class="direction-tag">演示路径 · 回测报告</span>
+    <h2>方向D：叙事式回测报告</h2>
+    <p>纵向滚动数据叙事，大字号KPI开场 → 瀑布图归因 → 月度趋势 → 可下钻明细，专为说服管理层设计</p>
+  </div>
+
+  <div class="mockup-frame">
+    <div class="dir-d-layout">
+      <div class="dir-a-sidebar" style="width:200px">
+        <div class="dir-a-sidebar-header">
+          <div class="logo">E</div>
+          <span style="font-size:13px">电力交易平台</span>
+        </div>
+        <div class="dir-a-nav-section">
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">📊</span> 交易工作台</div>
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">🔋</span> 储能调度</div>
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">📈</span> 收益看板</div>
+          <div class="dir-a-nav-item active"><span class="dir-a-nav-icon">📉</span> 回测分析</div>
+          <div class="dir-a-nav-item"><span class="dir-a-nav-icon">⚙️</span> 系统配置</div>
+        </div>
+      </div>
+      <div class="dir-d-main">
+        <div class="dir-a-topbar">
+          <div class="dir-a-topbar-left">
+            <span style="font-size:15px;font-weight:600">回测分析报告</span>
+            <span style="font-size:12px;color:var(--text-tertiary)">风电场A · 2024全年回测</span>
+          </div>
+          <div class="dir-a-topbar-right">
+            <button class="btn-primary">📄 一键导出PDF</button>
+          </div>
+        </div>
+        <div class="dir-d-content">
+          <!-- Hero KPI -->
+          <div class="dir-d-hero">
+            <div class="dir-d-hero-label">AI策略全年增收</div>
+            <div class="dir-d-hero-value">+¥3,800,000</div>
+            <div class="dir-d-hero-sub">基于2024.1-2024.12历史数据回测 · 含储能联合优化</div>
+            <div class="dir-d-hero-badge">收益提升率 +18.5%</div>
+          </div>
+
+          <!-- Revenue Attribution -->
+          <div class="dir-d-section">
+            <div class="dir-d-section-title">收益归因分解</div>
+            <div style="background:#fff;border-radius:4px;border:1px solid var(--border);padding:24px">
+              <div class="waterfall-chart">
+                <div class="waterfall-bar-group">
+                  <div class="waterfall-value">¥20,500K</div>
+                  <div class="waterfall-bar start" style="height:140px"></div>
+                  <div class="waterfall-label">原有策略<br>年收益</div>
+                </div>
+                <div class="waterfall-bar-group">
+                  <div class="waterfall-value" style="color:var(--success)">+¥2,100K</div>
+                  <div class="waterfall-bar increase" style="height:75px;margin-bottom:65px"></div>
+                  <div class="waterfall-label">日前报价<br>优化</div>
+                </div>
+                <div class="waterfall-bar-group">
+                  <div class="waterfall-value" style="color:var(--success)">+¥1,200K</div>
+                  <div class="waterfall-bar increase" style="height:43px;margin-bottom:140px"></div>
+                  <div class="waterfall-label">偏差考核<br>减少</div>
+                </div>
+                <div class="waterfall-bar-group">
+                  <div class="waterfall-value" style="color:var(--success)">+¥500K</div>
+                  <div class="waterfall-bar increase" style="height:18px;margin-bottom:183px"></div>
+                  <div class="waterfall-label">储能峰谷<br>套利</div>
+                </div>
+                <div class="waterfall-bar-group">
+                  <div class="waterfall-value" style="font-weight:700">¥24,300K</div>
+                  <div class="waterfall-bar total" style="height:200px"></div>
+                  <div class="waterfall-label">AI策略<br>年收益</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monthly Trend -->
+          <div class="dir-d-section">
+            <div class="dir-d-section-title">月度收益趋势对比</div>
+            <div class="trend-chart-area">
+              <div class="trend-legend">
+                <div class="trend-legend-item">
+                  <div class="trend-legend-dot" style="background:var(--primary-6)"></div>
+                  AI策略收益
+                </div>
+                <div class="trend-legend-item">
+                  <div class="trend-legend-dot" style="background:var(--primary-3)"></div>
+                  原有策略收益
+                </div>
+                <div class="trend-legend-item">
+                  <div class="trend-legend-dot" style="background:var(--success)"></div>
+                  增量收益
+                </div>
+              </div>
+              <svg width="100%" height="100" viewBox="0 0 600 100">
+                <!-- AI Strategy line -->
+                <polyline points="25,70 75,62 125,58 175,50 225,45 275,40 325,35 375,38 425,42 475,48 525,55 575,60" stroke="var(--primary-6)" stroke-width="2.5" fill="none"/>
+                <!-- Original Strategy line -->
+                <polyline points="25,80 75,75 125,72 175,68 225,63 275,60 325,55 375,58 425,62 475,65 525,70 575,72" stroke="var(--primary-3)" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+                <!-- Months -->
+                <text x="25" y="98" font-size="8" fill="var(--text-tertiary)" text-anchor="middle">1月</text>
+                <text x="125" y="98" font-size="8" fill="var(--text-tertiary)" text-anchor="middle">3月</text>
+                <text x="225" y="98" font-size="8" fill="var(--text-tertiary)" text-anchor="middle">5月</text>
+                <text x="325" y="98" font-size="8" fill="var(--text-tertiary)" text-anchor="middle">7月</text>
+                <text x="425" y="98" font-size="8" fill="var(--text-tertiary)" text-anchor="middle">9月</text>
+                <text x="525" y="98" font-size="8" fill="var(--text-tertiary)" text-anchor="middle">11月</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Key Findings -->
+          <div class="dir-d-section">
+            <div class="dir-d-section-title">关键发现</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+              <div class="dir-c-card" style="text-align:center">
+                <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">负电价避损</div>
+                <div style="font-size:24px;font-weight:600;color:var(--success);font-family:JetBrains Mono,monospace">¥450K</div>
+                <div style="font-size:11px;color:var(--text-tertiary)">识别全部负电价时段</div>
+              </div>
+              <div class="dir-c-card" style="text-align:center">
+                <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">储能套利收益</div>
+                <div style="font-size:24px;font-weight:600;color:var(--success);font-family:JetBrains Mono,monospace">¥500K</div>
+                <div style="font-size:11px;color:var(--text-tertiary)">峰谷价差+负电价充放</div>
+              </div>
+              <div class="dir-c-card" style="text-align:center">
+                <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">AI策略胜率</div>
+                <div style="font-size:24px;font-weight:600;color:var(--info);font-family:JetBrains Mono,monospace">73.5%</div>
+                <div style="font-size:11px;color:var(--text-tertiary)">268/365天优于人工</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="data-source">
+            数据来源：基于2024年1月-12月历史交易数据回测 · 回测引擎v1.0 · 生成时间 2026-02-26
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== COMPARISON ==================== -->
+<div id="dir-compare" class="direction-section">
+  <div class="direction-header">
+    <h2>设计方向对比总结</h2>
+    <p>每个方向的优势、适用场景和权衡取舍</p>
+  </div>
+
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <span class="tag" style="background:rgba(24,144,255,0.15);color:var(--info)">交易工作台</span>
+      <h3>方向A：经典三栏工作台</h3>
+      <div class="pros">
+        ✅ Agent链路始终可见，无需额外操作<br>
+        ✅ 三栏布局信息密度高，一屏决策<br>
+        ✅ 电站列表始终在左侧，切换方便<br>
+        ✅ 与Bloomberg类终端用户认知一致
+      </div>
+      <div class="cons" style="margin-top:8px">
+        ⚠ 中央报量报价网格宽度受限（~800px）<br>
+        ⚠ 信息密度较高，初次使用可能有压迫感<br>
+        ⚠ 右侧Agent面板占据固定空间
+      </div>
+    </div>
+
+    <div class="comparison-card">
+      <span class="tag" style="background:rgba(24,144,255,0.15);color:var(--info)">交易工作台</span>
+      <h3>方向B：中央聚焦式</h3>
+      <div class="pros">
+        ✅ 报量报价网格获得最大宽度（~1300px）<br>
+        ✅ Agent链路按需展开，不占常驻空间<br>
+        ✅ 顶部图表区提供快速态势感知<br>
+        ✅ 更现代的极简风格
+      </div>
+      <div class="cons" style="margin-top:8px">
+        ⚠ Agent链路需要额外点击才能查看<br>
+        ⚠ 图标导航学习成本略高<br>
+        ⚠ 电站切换在顶部，不如左侧列表直观
+      </div>
+    </div>
+
+    <div class="comparison-card">
+      <span class="tag" style="background:rgba(24,144,255,0.15);color:var(--info)">交易工作台</span>
+      <h3>方向C：仪表盘式</h3>
+      <div class="pros">
+        ✅ 全局态势感知最强（曲线+SOC+网格+Agent一目了然）<br>
+        ✅ 卡片化布局灵活，可按角色重组<br>
+        ✅ 最接近Grafana风格，数据可视化友好
+      </div>
+      <div class="cons" style="margin-top:8px">
+        ⚠ 报量报价网格区域较小，96时段信息不够展开<br>
+        ⚠ 单个卡片空间有限，深度信息受限<br>
+        ⚠ 更适合"监控"而非"操作"，可能不适合交易员核心流程
+      </div>
+    </div>
+
+    <div class="comparison-card">
+      <span class="tag" style="background:rgba(114,46,209,0.15);color:var(--high-price)">回测报告</span>
+      <h3>方向D：叙事式回测报告</h3>
+      <div class="pros">
+        ✅ 数据叙事力最强，3秒内抓住注意力<br>
+        ✅ 瀑布图归因清晰直观<br>
+        ✅ 纵向阅读流畅，符合报告阅读习惯<br>
+        ✅ 一键导出PDF友好
+      </div>
+      <div class="cons" style="margin-top:8px">
+        ⚠ 仅适用于回测报告场景<br>
+        ⚠ 需要滚动查看完整报告<br>
+        ⚠ 首屏大面积深色背景可能不适合所有人
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1400px;margin:32px auto 0;background:rgba(255,255,255,0.05);border-radius:12px;padding:24px;border:1px solid rgba(255,255,255,0.1)">
+    <h3 style="color:#fff;margin-bottom:12px;font-size:16px">💡 建议组合方案</h3>
+    <p style="font-size:14px;color:#ccc;line-height:1.8">
+      <strong style="color:#fff">交易工作台</strong>：推荐<strong style="color:var(--info)">方向A（经典三栏）</strong>作为基础，因为Agent链路始终可见是核心竞争力的体现，且三栏布局最匹配交易员的操作场景。可借鉴方向B的顶部图表区（功率预测+电价曲线缩略图），作为网格上方的态势感知条。<br><br>
+      <strong style="color:#fff">回测报告</strong>：采用<strong style="color:var(--high-price)">方向D（叙事式）</strong>，大字号KPI+瀑布图归因的叙事结构是说服管理层的最佳方式。<br><br>
+      <strong style="color:#fff">收益看板</strong>（主管/高管视图）：可借鉴<strong style="color:var(--info)">方向C（仪表盘式）</strong>的卡片化布局，适合监控和管理场景。
+    </p>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showDirection(id) {
+  document.querySelectorAll('.direction-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('dir-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

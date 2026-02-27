@@ -1,0 +1,32 @@
+{
+  "name": "electricity-trading-platform",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "vue": "^3.5.0",
+    "pinia": "^3.0.0",
+    "vue-router": "^5.0.0",
+    "ant-design-vue": "^4.2.0",
+    "@ant-design/charts": "^2.0.0",
+    "@ant-design/icons-vue": "^7.0.0",
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^7.0.0",
+    "vue-tsc": "^2.0.0",
+    "vitest": "^4.0.0",
+    "@vue/test-utils": "^2.4.0",
+    "unplugin-vue-components": "^28.0.0",
+    "unplugin-auto-import": "^19.0.0"
+  }
+}

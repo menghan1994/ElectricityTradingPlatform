@@ -1,0 +1,120 @@
+# generated: 2026-02-26
+# project: ElectricityTradingPlatform
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-26
+project: ElectricityTradingPlatform
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: 项目基础设施与用户访问
+  epic-1: in-progress
+  1-1-project-scaffolding: review
+  1-2-user-authentication: backlog
+  1-3-user-account-management: backlog
+  1-4-trader-station-binding: backlog
+  1-5-data-access-control: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: 电站配置与数据管理
+  epic-2: backlog
+  2-1-station-storage-config-wizard: backlog
+  2-2-province-market-rules: backlog
+  2-3-historical-data-import: backlog
+  2-4-anomaly-data-management: backlog
+  2-5-station-storage-data-import: backlog
+  2-6-market-data-auto-fetch: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: 功率预测与数据可视化
+  epic-3: backlog
+  3-1-prediction-model-config: backlog
+  3-2-prediction-data-auto-fetch: backlog
+  3-3-prediction-curve-visualization: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: 多Agent协作引擎与AI报价建议生成
+  epic-4: backlog
+  4-1-langgraph-multi-agent-setup: backlog
+  4-2-agent-security-persistence: backlog
+  4-3-agent-fallback-rule-engine: backlog
+  4-4-human-in-the-loop: backlog
+  4-5-ai-suggestion-display: backlog
+  4-6-agent-observability-dashboard: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: 日前报价决策工作台
+  epic-5: backlog
+  5-1-multi-station-overview: backlog
+  5-2-96-period-price-adjustment: backlog
+  5-3-quotation-confirm-submit: backlog
+  5-4-multi-station-switch: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: 储能调度管理
+  epic-6: backlog
+  6-1-storage-dispatch-auto-gen: backlog
+  6-2-storage-dispatch-view-adjust: backlog
+  6-3-soc-status-display: backlog
+  6-4-dispatch-command-confirm: backlog
+  6-5-operator-dispatch-feedback: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: 历史回测与收益归因分析
+  epic-7: backlog
+  7-1-backtest-config-execution: backlog
+  7-2-revenue-attribution-analysis: backlog
+  7-3-negative-price-analysis: backlog
+  7-4-backtest-report-pdf: backlog
+  7-5-management-backtest-report: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: 收益看板与绩效分析
+  epic-8: backlog
+  8-1-station-revenue-dashboard: backlog
+  8-2-ai-revenue-comparison: backlog
+  8-3-deviation-assessment-tracking: backlog
+  8-4-trader-performance-analysis: backlog
+  8-5-executive-revenue-dashboard: backlog
+  epic-8-retrospective: optional
+
+  # Epic 9: 审计合规与系统运维
+  epic-9: backlog
+  9-1-ai-decision-audit-log: backlog
+  9-2-operation-audit-log: backlog
+  9-3-audit-log-search: backlog
+  9-4-audit-data-retention-backup: backlog
+  epic-9-retrospective: optional
