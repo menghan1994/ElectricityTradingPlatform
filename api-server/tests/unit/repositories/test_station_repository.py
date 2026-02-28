@@ -133,6 +133,69 @@ class TestGetAllPaginated:
         assert "LIMIT 100" in sql_str, f"Expected LIMIT 100 in SQL, got: {sql_str}"
 
 
+class TestGetAllPaginatedFiltered:
+    @pytest.mark.asyncio
+    async def test_no_filter_returns_all(self, station_repo, mock_session):
+        """allowed_station_ids=None → 不过滤"""
+        stations = [_make_station(name=f"电站{i}") for i in range(2)]
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 2
+        list_result = MagicMock()
+        list_result.scalars.return_value.all.return_value = stations
+        mock_session.execute.side_effect = [count_result, list_result]
+
+        result, total = await station_repo.get_all_paginated_filtered(
+            allowed_station_ids=None, page=1, page_size=20,
+        )
+        assert len(result) == 2
+        assert total == 2
+
+    @pytest.mark.asyncio
+    async def test_empty_ids_returns_empty(self, station_repo, mock_session):
+        """allowed_station_ids=[] → 快速返回空结果"""
+        result, total = await station_repo.get_all_paginated_filtered(
+            allowed_station_ids=[], page=1, page_size=20,
+        )
+        assert result == []
+        assert total == 0
+        mock_session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_with_allowed_ids_adds_filter(self, station_repo, mock_session):
+        """allowed_station_ids=[...] → WHERE IN 过滤"""
+        sid = uuid4()
+        stations = [_make_station(id=sid)]
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        list_result = MagicMock()
+        list_result.scalars.return_value.all.return_value = stations
+        mock_session.execute.side_effect = [count_result, list_result]
+
+        result, total = await station_repo.get_all_paginated_filtered(
+            allowed_station_ids=[sid], page=1, page_size=20,
+        )
+        assert len(result) == 1
+        assert total == 1
+
+
+class TestGetAllActiveFiltered:
+    @pytest.mark.asyncio
+    async def test_no_filter(self, station_repo, mock_session):
+        stations = [_make_station()]
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = stations
+        mock_session.execute.return_value = mock_result
+
+        result = await station_repo.get_all_active_filtered(allowed_station_ids=None)
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_empty_ids_returns_empty(self, station_repo, mock_session):
+        result = await station_repo.get_all_active_filtered(allowed_station_ids=[])
+        assert result == []
+        mock_session.execute.assert_not_called()
+
+
 class TestHasActiveBindings:
     @pytest.mark.asyncio
     async def test_returns_true_when_bindings_exist(self, station_repo, mock_session):

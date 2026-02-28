@@ -6,8 +6,10 @@ from uuid import uuid4
 
 import pytest
 
+from app.core.data_access import DataAccessContext
 from app.core.exceptions import BusinessError
 from app.models.station import PowerStation
+from app.models.user import UserRole
 from app.schemas.station import StationCreate, StationUpdate
 from app.services.station_service import StationService
 
@@ -275,3 +277,204 @@ class TestGetAllActiveDevicesWithStationNames:
 
         assert len(devices) == 1
         assert name_map[str(station.id)] == "广东风电A"
+
+
+# ── 数据访问控制方法测试（Story 1.5） ──
+
+
+def _make_access_ctx(role: str = UserRole.ADMIN, station_ids=None, device_ids=None):
+    return DataAccessContext(
+        user_id=uuid4(), role=role,
+        station_ids=tuple(station_ids) if station_ids is not None else None,
+        device_ids=tuple(device_ids) if device_ids is not None else None,
+    )
+
+
+class TestListStationsForUser:
+    @pytest.mark.asyncio
+    async def test_admin_gets_all(self, station_service, mock_station_repo):
+        stations = [_make_station(name=f"电站{i}") for i in range(3)]
+        mock_station_repo.get_all_paginated_filtered.return_value = (stations, 3)
+
+        ctx = _make_access_ctx(role=UserRole.ADMIN)
+        result, total = await station_service.list_stations_for_user(ctx, page=1, page_size=20)
+
+        assert len(result) == 3
+        assert total == 3
+        mock_station_repo.get_all_paginated_filtered.assert_called_once_with(
+            allowed_station_ids=None, page=1, page_size=20,
+            search=None, province=None, station_type=None, is_active=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_trader_gets_filtered(self, station_service, mock_station_repo):
+        sid = uuid4()
+        stations = [_make_station(id=sid)]
+        mock_station_repo.get_all_paginated_filtered.return_value = (stations, 1)
+
+        ctx = _make_access_ctx(role=UserRole.TRADER, station_ids=[sid])
+        result, total = await station_service.list_stations_for_user(ctx, page=1, page_size=20)
+
+        assert total == 1
+        mock_station_repo.get_all_paginated_filtered.assert_called_once_with(
+            allowed_station_ids=(sid,), page=1, page_size=20,
+            search=None, province=None, station_type=None, is_active=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_trader_no_bindings_gets_empty(self, station_service, mock_station_repo):
+        mock_station_repo.get_all_paginated_filtered.return_value = ([], 0)
+
+        ctx = _make_access_ctx(role=UserRole.TRADER, station_ids=())
+        result, total = await station_service.list_stations_for_user(ctx, page=1, page_size=20)
+
+        assert result == []
+        assert total == 0
+
+
+class TestGetStationForUser:
+    @pytest.mark.asyncio
+    async def test_admin_access(self, station_service, mock_station_repo):
+        station = _make_station()
+        mock_station_repo.get_by_id.return_value = station
+
+        ctx = _make_access_ctx(role=UserRole.ADMIN)
+        result = await station_service.get_station_for_user(ctx, station.id)
+
+        assert result is station
+
+    @pytest.mark.asyncio
+    async def test_station_not_found_returns_404(self, station_service, mock_station_repo):
+        """电站不存在时返回 404，而非 403"""
+        mock_station_repo.get_by_id.return_value = None
+
+        ctx = _make_access_ctx(role=UserRole.ADMIN)
+
+        with pytest.raises(BusinessError) as exc_info:
+            await station_service.get_station_for_user(ctx, uuid4())
+
+        assert exc_info.value.code == "STATION_NOT_FOUND"
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_trader_access_denied(self, station_service, mock_station_repo):
+        """电站存在但 trader 无权访问时返回 403"""
+        station = _make_station()
+        mock_station_repo.get_by_id.return_value = station
+
+        ctx = _make_access_ctx(role=UserRole.TRADER, station_ids=(uuid4(),))
+
+        with pytest.raises(BusinessError) as exc_info:
+            await station_service.get_station_for_user(ctx, station.id)
+
+        assert exc_info.value.code == "STATION_ACCESS_DENIED"
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_trader_access_allowed(self, station_service, mock_station_repo):
+        station = _make_station()
+        mock_station_repo.get_by_id.return_value = station
+
+        ctx = _make_access_ctx(role=UserRole.TRADER, station_ids=(station.id,))
+        result = await station_service.get_station_for_user(ctx, station.id)
+
+        assert result is station
+
+
+class TestGetAllActiveStationsForUser:
+    @pytest.mark.asyncio
+    async def test_admin_full_access(self, station_service, mock_station_repo):
+        stations = [_make_station(), _make_station()]
+        mock_station_repo.get_all_active_filtered.return_value = stations
+
+        ctx = _make_access_ctx(role=UserRole.ADMIN)
+        result = await station_service.get_all_active_stations_for_user(ctx)
+
+        assert len(result) == 2
+        mock_station_repo.get_all_active_filtered.assert_called_once_with(
+            allowed_station_ids=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_trader_filtered(self, station_service, mock_station_repo):
+        sid = uuid4()
+        stations = [_make_station(id=sid)]
+        mock_station_repo.get_all_active_filtered.return_value = stations
+
+        ctx = _make_access_ctx(role=UserRole.TRADER, station_ids=[sid])
+        result = await station_service.get_all_active_stations_for_user(ctx)
+
+        assert len(result) == 1
+        mock_station_repo.get_all_active_filtered.assert_called_once_with(
+            allowed_station_ids=(sid,),
+        )
+
+
+class TestGetAllActiveDevicesForUser:
+    @pytest.mark.asyncio
+    async def test_admin_full_access(self, station_service, mock_storage_repo, mock_station_repo):
+        station = _make_station()
+        device = MagicMock()
+        device.id = uuid4()
+        device.station_id = station.id
+        mock_storage_repo.get_all_active_filtered.return_value = [device]
+        mock_station_repo.get_by_ids.return_value = [station]
+
+        ctx = _make_access_ctx(role=UserRole.ADMIN)
+        devices, name_map = await station_service.get_all_active_devices_for_user(ctx)
+
+        assert len(devices) == 1
+        mock_storage_repo.get_all_active_filtered.assert_called_once_with(
+            allowed_device_ids=None,
+            allowed_station_ids=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_operator_filtered(self, station_service, mock_storage_repo, mock_station_repo):
+        did = uuid4()
+        sid = uuid4()
+        station = _make_station(id=sid)
+        device = MagicMock()
+        device.id = did
+        device.station_id = station.id
+        mock_storage_repo.get_all_active_filtered.return_value = [device]
+        mock_station_repo.get_by_ids.return_value = [station]
+
+        ctx = _make_access_ctx(role=UserRole.STORAGE_OPERATOR, station_ids=[sid], device_ids=[did])
+        devices, name_map = await station_service.get_all_active_devices_for_user(ctx)
+
+        assert len(devices) == 1
+        mock_storage_repo.get_all_active_filtered.assert_called_once_with(
+            allowed_device_ids=(did,),
+            allowed_station_ids=(sid,),
+        )
+
+    @pytest.mark.asyncio
+    async def test_trader_filtered_by_station(self, station_service, mock_storage_repo, mock_station_repo):
+        """trader 设备过滤基于 station_ids（绑定电站下的设备）"""
+        sid = uuid4()
+        station = _make_station(id=sid)
+        device = MagicMock()
+        device.id = uuid4()
+        device.station_id = sid
+        mock_storage_repo.get_all_active_filtered.return_value = [device]
+        mock_station_repo.get_by_ids.return_value = [station]
+
+        ctx = _make_access_ctx(role=UserRole.TRADER, station_ids=[sid])
+        devices, name_map = await station_service.get_all_active_devices_for_user(ctx)
+
+        assert len(devices) == 1
+        mock_storage_repo.get_all_active_filtered.assert_called_once_with(
+            allowed_device_ids=None,
+            allowed_station_ids=(sid,),
+        )
+
+    @pytest.mark.asyncio
+    async def test_empty_devices(self, station_service, mock_storage_repo):
+        mock_storage_repo.get_all_active_filtered.return_value = []
+
+        ctx = _make_access_ctx(role=UserRole.STORAGE_OPERATOR, station_ids=(), device_ids=())
+        devices, name_map = await station_service.get_all_active_devices_for_user(ctx)
+
+        assert devices == []
+        assert name_map == {}

@@ -82,6 +82,22 @@ class BindingRepository:
         await self.session.flush()
         return bindings
 
+    async def get_user_device_station_ids(self, user_id: UUID) -> list[UUID]:
+        """获取用户绑定设备所属电站的 ID 列表（去重，仅活跃设备）。"""
+        from app.models.storage import StorageDevice
+
+        stmt = (
+            select(StorageDevice.station_id)
+            .join(UserDeviceBinding, StorageDevice.id == UserDeviceBinding.device_id)
+            .where(
+                UserDeviceBinding.user_id == user_id,
+                StorageDevice.is_active.is_(True),
+            )
+            .distinct()
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     # ── 查询辅助 ──
 
     async def get_station_binding_count(self, station_id: UUID) -> int:

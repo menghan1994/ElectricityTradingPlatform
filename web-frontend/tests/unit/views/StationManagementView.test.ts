@@ -38,7 +38,7 @@ vi.mock('../../../src/api/station', () => ({
     updateUserStationBindings: vi.fn(),
     getUserDeviceBindings: vi.fn(),
     updateUserDeviceBindings: vi.fn(),
-    listAllActiveDevices: vi.fn(),
+    listAllActiveDevices: vi.fn().mockResolvedValue([]),
   },
 }))
 
@@ -68,8 +68,8 @@ vi.mock('ant-design-vue', async () => {
 
 import StationManagementView from '../../../src/views/admin/StationManagementView.vue'
 import { useStationStore } from '../../../src/stores/station'
+import { useAuthStore } from '../../../src/stores/auth'
 import { stationApi } from '../../../src/api/station'
-import { getErrorCode } from '../../../src/api/errors'
 import { message } from 'ant-design-vue'
 
 // Stubs that render slot content and forward events for interaction testing
@@ -116,6 +116,15 @@ const defaultStubs = {
     props: ['title', 'okText', 'cancelText'],
     emits: ['confirm'],
   },
+  'a-divider': { template: '<hr />' },
+}
+
+function setAuthUser(role: string) {
+  const authStore = useAuthStore()
+  authStore.$patch({
+    accessToken: 'fake-token',
+    user: { id: '1', username: 'testuser', display_name: 'Test', role, is_active: true, is_locked: false, created_at: '2026-01-01', updated_at: '2026-01-01' } as any,
+  })
 }
 
 function mountView() {
@@ -128,6 +137,8 @@ describe('StationManagementView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    // 默认以 admin 角色挂载
+    setAuthUser('admin')
   })
 
   describe('rendering', () => {
@@ -136,11 +147,19 @@ describe('StationManagementView', () => {
       expect(wrapper.text()).toContain('电站管理')
     })
 
-    it('should render create station button', () => {
+    it('should render create station button for admin', () => {
       const wrapper = mountView()
       const buttons = wrapper.findAll('button')
       const createBtn = buttons.find((b) => b.text().includes('创建电站'))
       expect(createBtn).toBeTruthy()
+    })
+
+    it('should not render create station button for non-admin', () => {
+      setAuthUser('trader')
+      const wrapper = mountView()
+      const buttons = wrapper.findAll('button')
+      const createBtn = buttons.find((b) => b.text().includes('创建电站'))
+      expect(createBtn).toBeUndefined()
     })
 
     it('should render table with station data after fetch', async () => {
@@ -281,6 +300,105 @@ describe('StationManagementView', () => {
       await flushPromises()
 
       expect(vi.mocked(message.error)).toHaveBeenCalledWith('加载电站列表失败')
+    })
+  })
+
+  describe('storage_operator device view', () => {
+    it('should show device section for storage_operator', async () => {
+      vi.mocked(stationApi.listAllActiveDevices).mockResolvedValue([
+        { id: 'd1', station_id: 's1', station_name: '测试电站', name: '储能设备A', capacity_mwh: '50.00', max_charge_rate_mw: '10.00', max_discharge_rate_mw: '10.00', soc_upper_limit: '0.9', soc_lower_limit: '0.1', is_active: true, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      ])
+
+      setAuthUser('storage_operator')
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('储能设备')
+      expect(stationApi.listAllActiveDevices).toHaveBeenCalled()
+    })
+
+    it('should show both stations and devices for storage_operator', async () => {
+      vi.mocked(stationApi.listAllActiveDevices).mockResolvedValue([])
+      setAuthUser('storage_operator')
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('电站管理')
+      expect(wrapper.text()).toContain('储能设备')
+      expect(stationApi.listStations).toHaveBeenCalled()
+    })
+
+    it('should not show admin actions for storage_operator', async () => {
+      vi.mocked(stationApi.listAllActiveDevices).mockResolvedValue([])
+      setAuthUser('storage_operator')
+      const wrapper = mountView()
+      await flushPromises()
+
+      // 不应显示创建电站按钮
+      const buttons = wrapper.findAll('button')
+      const createBtn = buttons.find((b) => b.text().includes('创建电站'))
+      expect(createBtn).toBeUndefined()
+
+      // 电站表格的 columns 不应包含 'actions' 列
+      const table = wrapper.find('.a-table-stub')
+      const columnsProp = table.attributes('columns') || ''
+      expect(columnsProp).not.toContain('actions')
+    })
+
+    it('should show both stations and devices for admin', async () => {
+      vi.mocked(stationApi.listAllActiveDevices).mockResolvedValue([])
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('电站管理')
+      expect(wrapper.text()).toContain('储能设备')
+    })
+
+    it('should show device section for trader', async () => {
+      vi.mocked(stationApi.listAllActiveDevices).mockResolvedValue([
+        { id: 'd1', station_id: 's1', station_name: '测试电站', name: '储能设备A', capacity_mwh: '50.00', max_charge_rate_mw: '10.00', max_discharge_rate_mw: '10.00', soc_upper_limit: '0.9', soc_lower_limit: '0.1', is_active: true, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      ])
+
+      setAuthUser('trader')
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('电站管理')
+      expect(wrapper.text()).toContain('储能设备')
+    })
+  })
+
+  describe('executive_readonly view', () => {
+    it('should show stations and devices for executive_readonly', async () => {
+      vi.mocked(stationApi.listAllActiveDevices).mockResolvedValue([
+        { id: 'd1', station_id: 's1', station_name: '测试电站', name: '储能设备A', capacity_mwh: '50.00', max_charge_rate_mw: '10.00', max_discharge_rate_mw: '10.00', soc_upper_limit: '0.9', soc_lower_limit: '0.1', is_active: true, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      ])
+
+      setAuthUser('executive_readonly')
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('电站管理')
+      expect(wrapper.text()).toContain('储能设备')
+      expect(stationApi.listStations).toHaveBeenCalled()
+      expect(stationApi.listAllActiveDevices).toHaveBeenCalled()
+    })
+
+    it('should not show admin actions for executive_readonly', async () => {
+      vi.mocked(stationApi.listAllActiveDevices).mockResolvedValue([])
+      setAuthUser('executive_readonly')
+      const wrapper = mountView()
+      await flushPromises()
+
+      // 不应显示创建电站按钮
+      const buttons = wrapper.findAll('button')
+      const createBtn = buttons.find((b) => b.text().includes('创建电站'))
+      expect(createBtn).toBeUndefined()
+
+      // 电站表格的 columns 不应包含 'actions' 列（非 admin 无操作列）
+      const table = wrapper.find('.a-table-stub')
+      const columnsProp = table.attributes('columns') || ''
+      expect(columnsProp).not.toContain('actions')
     })
   })
 })

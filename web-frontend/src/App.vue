@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { theme } from 'ant-design-vue'
 import type { ThemeConfig } from 'ant-design-vue/es/config-provider/context'
 import { useAuth } from '@/composables/useAuth'
+import { isAdmin, canViewStation } from '@/utils/permission'
 
 const themeConfig: ThemeConfig = {
   token: {
@@ -45,10 +46,10 @@ const selectedKeys = computed(() => {
           <a-menu-item key="dashboard">
             <router-link to="/">首页</router-link>
           </a-menu-item>
-          <a-menu-item v-if="authStore.user?.role === 'admin'" key="user-management">
+          <a-menu-item v-if="isAdmin(authStore.user?.role)" key="user-management">
             <router-link to="/admin/users">用户管理</router-link>
           </a-menu-item>
-          <a-menu-item v-if="authStore.user?.role === 'admin'" key="station-management">
+          <a-menu-item v-if="canViewStation(authStore.user?.role)" key="station-management">
             <router-link to="/admin/stations">电站管理</router-link>
           </a-menu-item>
         </a-menu>

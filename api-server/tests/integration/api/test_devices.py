@@ -9,9 +9,10 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from app.core.data_access import DataAccessContext
 from app.main import app
 from app.models.storage import StorageDevice
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 def _make_user_obj(role: str = "admin") -> MagicMock:
@@ -45,16 +46,6 @@ def _make_device_obj(**kwargs) -> MagicMock:
     return device
 
 
-def _create_mock_station_service(devices=None):
-    from app.services.station_service import StationService
-
-    service = AsyncMock(spec=StationService)
-    if devices is None:
-        devices = [_make_device_obj(name=f"设备{i}") for i in range(3)]
-    service.get_all_active_devices.return_value = devices
-    return service
-
-
 @pytest_asyncio.fixture
 async def api_client():
     transport = ASGITransport(app=app)
@@ -66,16 +57,20 @@ async def api_client():
 class TestListActiveDevicesEndpoint:
     @pytest.mark.asyncio
     async def test_list_active_devices_as_admin(self, api_client):
-        admin = _make_user_obj(role="admin")
         station_id = uuid4()
         devices = [_make_device_obj(name=f"设备{i}", station_id=station_id) for i in range(3)]
         mock_service = AsyncMock()
         station_name_map = {str(station_id): "测试电站"}
-        mock_service.get_all_active_devices_with_station_names.return_value = (devices, station_name_map)
+        mock_service.get_all_active_devices_for_user.return_value = (devices, station_name_map)
+
+        admin_ctx = DataAccessContext(
+            user_id=uuid4(), role=UserRole.ADMIN,
+            station_ids=None, device_ids=None,
+        )
 
         from app.api.v1.stations import _get_station_service
-        from app.core.dependencies import get_current_active_user
-        app.dependency_overrides[get_current_active_user] = lambda: admin
+        from app.core.data_access import get_data_access_context
+        app.dependency_overrides[get_data_access_context] = lambda: admin_ctx
         app.dependency_overrides[_get_station_service] = lambda: mock_service
 
         response = await api_client.get(
@@ -101,13 +96,17 @@ class TestListActiveDevicesEndpoint:
 
     @pytest.mark.asyncio
     async def test_list_active_devices_empty_list(self, api_client):
-        admin = _make_user_obj(role="admin")
         mock_service = AsyncMock()
-        mock_service.get_all_active_devices_with_station_names.return_value = ([], {})
+        mock_service.get_all_active_devices_for_user.return_value = ([], {})
+
+        admin_ctx = DataAccessContext(
+            user_id=uuid4(), role=UserRole.ADMIN,
+            station_ids=None, device_ids=None,
+        )
 
         from app.api.v1.stations import _get_station_service
-        from app.core.dependencies import get_current_active_user
-        app.dependency_overrides[get_current_active_user] = lambda: admin
+        from app.core.data_access import get_data_access_context
+        app.dependency_overrides[get_data_access_context] = lambda: admin_ctx
         app.dependency_overrides[_get_station_service] = lambda: mock_service
 
         response = await api_client.get(
@@ -122,14 +121,18 @@ class TestListActiveDevicesEndpoint:
     @pytest.mark.asyncio
     async def test_list_active_devices_without_station_name(self, api_client):
         """station_name_map 中无对应电站时，station_name 应为 null"""
-        admin = _make_user_obj(role="admin")
         devices = [_make_device_obj(name="孤立设备")]
         mock_service = AsyncMock()
-        mock_service.get_all_active_devices_with_station_names.return_value = (devices, {})
+        mock_service.get_all_active_devices_for_user.return_value = (devices, {})
+
+        admin_ctx = DataAccessContext(
+            user_id=uuid4(), role=UserRole.ADMIN,
+            station_ids=None, device_ids=None,
+        )
 
         from app.api.v1.stations import _get_station_service
-        from app.core.dependencies import get_current_active_user
-        app.dependency_overrides[get_current_active_user] = lambda: admin
+        from app.core.data_access import get_data_access_context
+        app.dependency_overrides[get_data_access_context] = lambda: admin_ctx
         app.dependency_overrides[_get_station_service] = lambda: mock_service
 
         response = await api_client.get(
@@ -143,15 +146,24 @@ class TestListActiveDevicesEndpoint:
         assert data[0]["station_name"] is None
 
     @pytest.mark.asyncio
-    async def test_list_active_devices_forbidden_for_trader(self, api_client):
-        trader = _make_user_obj(role="trader")
+    async def test_list_active_devices_accessible_for_trader(self, api_client):
+        """Story 1.5: 交易员可以访问设备列表（数据由后端过滤）"""
+        mock_service = AsyncMock()
+        mock_service.get_all_active_devices_for_user.return_value = ([], {})
 
-        from app.core.dependencies import get_current_active_user
-        app.dependency_overrides[get_current_active_user] = lambda: trader
+        trader_ctx = DataAccessContext(
+            user_id=uuid4(), role=UserRole.TRADER,
+            station_ids=(uuid4(),), device_ids=None,
+        )
+
+        from app.api.v1.stations import _get_station_service
+        from app.core.data_access import get_data_access_context
+        app.dependency_overrides[get_data_access_context] = lambda: trader_ctx
+        app.dependency_overrides[_get_station_service] = lambda: mock_service
 
         response = await api_client.get(
             "/api/v1/stations/devices/active",
             headers={"Authorization": "Bearer fake"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 200

@@ -34,7 +34,7 @@ const router = createRouter({
       path: '/admin/stations',
       name: 'StationManagement',
       component: () => import('@/views/admin/StationManagementView.vue'),
-      meta: { requiresAuth: true, roles: ['admin'] },
+      meta: { requiresAuth: true, roles: ['admin', 'trader', 'storage_operator', 'trading_manager', 'executive_readonly'] },
     },
   ],
 })

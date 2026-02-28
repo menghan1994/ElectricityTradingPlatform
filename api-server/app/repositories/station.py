@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -71,9 +72,43 @@ class StationRepository(BaseRepository[PowerStation]):
         station_type: str | None = None,
         is_active: bool | None = None,
     ) -> tuple[list[PowerStation], int]:
+        return await self.get_all_paginated_filtered(
+            page=page,
+            page_size=page_size,
+            search=search,
+            province=province,
+            station_type=station_type,
+            is_active=is_active,
+        )
+
+    async def get_all_paginated_filtered(
+        self,
+        allowed_station_ids: Sequence[UUID] | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        search: str | None = None,
+        province: str | None = None,
+        station_type: str | None = None,
+        is_active: bool | None = None,
+    ) -> tuple[list[PowerStation], int]:
+        """分页查询电站，支持行级数据过滤。
+
+        allowed_station_ids:
+        - None → 不过滤（全部可见）
+        - []   → 快速返回空结果（无权查看）
+        - [id1, id2, ...] → WHERE id IN (...) 过滤
+        """
+        if allowed_station_ids is not None and len(allowed_station_ids) == 0:
+            return [], 0
+
         page_size = min(page_size, 100)
         stmt = select(PowerStation)
         count_stmt = select(func.count()).select_from(PowerStation)
+
+        # 核心：行级数据过滤
+        if allowed_station_ids is not None:
+            stmt = stmt.where(PowerStation.id.in_(allowed_station_ids))
+            count_stmt = count_stmt.where(PowerStation.id.in_(allowed_station_ids))
 
         if is_active is not None:
             stmt = stmt.where(PowerStation.is_active.is_(is_active))
@@ -101,3 +136,22 @@ class StationRepository(BaseRepository[PowerStation]):
         stations = list(result.scalars().all())
 
         return stations, total
+
+    async def get_all_active_filtered(
+        self,
+        allowed_station_ids: Sequence[UUID] | None = None,
+    ) -> list[PowerStation]:
+        """获取活跃电站，支持行级过滤。"""
+        if allowed_station_ids is not None and len(allowed_station_ids) == 0:
+            return []
+
+        stmt = (
+            select(PowerStation)
+            .where(PowerStation.is_active.is_(True))
+            .order_by(PowerStation.name)
+        )
+        if allowed_station_ids is not None:
+            stmt = stmt.where(PowerStation.id.in_(allowed_station_ids))
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())

@@ -5,11 +5,17 @@ import type { FormInstance } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import { getErrorMessage, getErrorCode } from '@/api/errors'
 import { useStationStore } from '@/stores/station'
-import type { StationCreate, StationUpdate, StationRead, StationType } from '@/types/station'
+import { useAuth } from '@/composables/useAuth'
+import { canViewStation, canViewDevice, isAdmin } from '@/utils/permission'
+import type { StationCreate, StationUpdate, StationRead, StationType, StorageDeviceRead } from '@/types/station'
 import { stationTypeLabels } from '@/types/station'
 import { provinceOptions } from '@/constants/provinces'
 
 const stationStore = useStationStore()
+const { authStore } = useAuth()
+
+const showStations = computed(() => canViewStation(authStore.user?.role))
+const showDevices = computed(() => canViewDevice(authStore.user?.role))
 
 // MEDIUM: 从 stationTypeLabels 生成选项，消除数据重复
 const stationTypeOptions = (Object.entries(stationTypeLabels) as [StationType, string][]).map(
@@ -64,20 +70,56 @@ const searchText = ref('')
 const selectedProvince = ref<string | undefined>(undefined)
 const selectedType = ref<string | undefined>(undefined)
 
-const columns = [
-  { title: '电站名称', dataIndex: 'name', key: 'name' },
-  { title: '省份', dataIndex: 'province', key: 'province' },
-  { title: '类型', dataIndex: 'station_type', key: 'station_type' },
-  { title: '容量(MW)', dataIndex: 'capacity_mw', key: 'capacity_mw' },
-  { title: '储能', dataIndex: 'has_storage', key: 'has_storage' },
+const columns = computed(() => {
+  const cols = [
+    { title: '电站名称', dataIndex: 'name', key: 'name' },
+    { title: '省份', dataIndex: 'province', key: 'province' },
+    { title: '类型', dataIndex: 'station_type', key: 'station_type' },
+    { title: '容量(MW)', dataIndex: 'capacity_mw', key: 'capacity_mw' },
+    { title: '储能', dataIndex: 'has_storage', key: 'has_storage' },
+    { title: '状态', dataIndex: 'is_active', key: 'is_active' },
+  ]
+  if (isAdmin(authStore.user?.role)) {
+    cols.push({ title: '操作', dataIndex: 'actions', key: 'actions' })
+  }
+  return cols
+})
+
+// ── 储能设备列表 ──
+const deviceList = ref<StorageDeviceRead[]>([])
+const isLoadingDevices = ref(false)
+
+const deviceColumns = [
+  { title: '设备名称', dataIndex: 'name', key: 'name' },
+  { title: '所属电站', dataIndex: 'station_name', key: 'station_name' },
+  { title: '容量(MWh)', dataIndex: 'capacity_mwh', key: 'capacity_mwh' },
+  { title: '最大充电(MW)', dataIndex: 'max_charge_rate_mw', key: 'max_charge_rate_mw' },
+  { title: '最大放电(MW)', dataIndex: 'max_discharge_rate_mw', key: 'max_discharge_rate_mw' },
+  { title: 'SOC上限', dataIndex: 'soc_upper_limit', key: 'soc_upper_limit' },
+  { title: 'SOC下限', dataIndex: 'soc_lower_limit', key: 'soc_lower_limit' },
   { title: '状态', dataIndex: 'is_active', key: 'is_active' },
-  { title: '操作', key: 'actions', width: 200 },
 ]
 
+async function fetchDevices() {
+  isLoadingDevices.value = true
+  try {
+    deviceList.value = await stationStore.fetchAllActiveDevices()
+  } catch {
+    message.error('加载储能设备列表失败')
+  } finally {
+    isLoadingDevices.value = false
+  }
+}
+
 onMounted(() => {
-  stationStore.fetchStations().catch(() => {
-    message.error('加载电站列表失败')
-  })
+  if (showStations.value) {
+    stationStore.fetchStations().catch(() => {
+      message.error('加载电站列表失败')
+    })
+  }
+  if (showDevices.value) {
+    fetchDevices()
+  }
 })
 
 function handleTableChange(pagination: { current: number; pageSize: number }) {
@@ -212,93 +254,123 @@ const pagination = computed(() => ({
 
 <template>
   <div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h2 style="margin: 0;">电站管理</h2>
-      <a-button type="primary" @click="openCreateDialog">+ 创建电站</a-button>
-    </div>
+    <!-- 电站管理区域：仅对可查看电站数据的角色显示 -->
+    <template v-if="showStations">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin: 0;">电站管理</h2>
+        <a-button v-if="isAdmin(authStore.user?.role)" type="primary" @click="openCreateDialog">+ 创建电站</a-button>
+      </div>
 
-    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-      <a-input-search
-        v-model:value="searchText"
-        placeholder="搜索电站名称"
-        style="width: 240px;"
-        allow-clear
-        @search="handleSearch"
-        @pressEnter="handleSearch"
+      <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+        <a-input-search
+          v-model:value="searchText"
+          placeholder="搜索电站名称"
+          style="width: 240px;"
+          allow-clear
+          @search="handleSearch"
+          @pressEnter="handleSearch"
+        />
+        <a-select
+          v-model:value="selectedProvince"
+          placeholder="省份筛选"
+          style="width: 140px;"
+          allow-clear
+          @change="handleFilterChange"
+        >
+          <a-select-option v-for="p in provinceOptions" :key="p" :value="p">{{ p }}</a-select-option>
+        </a-select>
+        <a-select
+          v-model:value="selectedType"
+          placeholder="类型筛选"
+          style="width: 140px;"
+          allow-clear
+          @change="handleFilterChange"
+        >
+          <a-select-option v-for="opt in stationTypeOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </a-select-option>
+        </a-select>
+      </div>
+
+      <a-alert
+        v-if="stationStore.error"
+        type="error"
+        :message="stationStore.error"
+        show-icon
+        closable
+        style="margin-bottom: 16px;"
       />
-      <a-select
-        v-model:value="selectedProvince"
-        placeholder="省份筛选"
-        style="width: 140px;"
-        allow-clear
-        @change="handleFilterChange"
+
+      <a-table
+        :columns="columns"
+        :data-source="stationStore.stationList"
+        :loading="stationStore.isLoading"
+        :pagination="pagination"
+        row-key="id"
+        @change="handleTableChange"
       >
-        <a-select-option v-for="p in provinceOptions" :key="p" :value="p">{{ p }}</a-select-option>
-      </a-select>
-      <a-select
-        v-model:value="selectedType"
-        placeholder="类型筛选"
-        style="width: 140px;"
-        allow-clear
-        @change="handleFilterChange"
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'station_type'">
+            {{ stationTypeLabels[record.station_type as StationType] || record.station_type }}
+          </template>
+
+          <template v-else-if="column.key === 'has_storage'">
+            <a-tag :color="record.has_storage ? 'blue' : 'default'">
+              {{ record.has_storage ? '是' : '否' }}
+            </a-tag>
+          </template>
+
+          <template v-else-if="column.key === 'is_active'">
+            <a-tag :color="record.is_active ? 'green' : 'red'">
+              {{ record.is_active ? '启用' : '已停用' }}
+            </a-tag>
+          </template>
+
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <a-button size="small" @click="openEditDialog(record)">编辑</a-button>
+              <a-popconfirm
+                :title="record.is_active ? '确定停用该电站？' : '确定启用该电站？'"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="handleToggleActive(record)"
+              >
+                <a-button size="small" :danger="record.is_active">
+                  {{ record.is_active ? '停用' : '启用' }}
+                </a-button>
+              </a-popconfirm>
+            </a-space>
+          </template>
+        </template>
+      </a-table>
+    </template>
+
+    <!-- 储能设备列表区域：仅对可查看设备数据的角色显示 -->
+    <template v-if="showDevices">
+      <a-divider v-if="showStations" />
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin: 0;">储能设备</h2>
+      </div>
+
+      <a-table
+        :columns="deviceColumns"
+        :data-source="deviceList"
+        :loading="isLoadingDevices"
+        :pagination="false"
+        row-key="id"
       >
-        <a-select-option v-for="opt in stationTypeOptions" :key="opt.value" :value="opt.value">
-          {{ opt.label }}
-        </a-select-option>
-      </a-select>
-    </div>
-
-    <a-alert
-      v-if="stationStore.error"
-      type="error"
-      :message="stationStore.error"
-      show-icon
-      closable
-      style="margin-bottom: 16px;"
-    />
-
-    <a-table
-      :columns="columns"
-      :data-source="stationStore.stationList"
-      :loading="stationStore.isLoading"
-      :pagination="pagination"
-      row-key="id"
-      @change="handleTableChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'station_type'">
-          {{ stationTypeLabels[record.station_type as StationType] || record.station_type }}
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'station_name'">
+            {{ record.station_name || '-' }}
+          </template>
+          <template v-else-if="column.key === 'is_active'">
+            <a-tag :color="record.is_active ? 'green' : 'red'">
+              {{ record.is_active ? '启用' : '已停用' }}
+            </a-tag>
+          </template>
         </template>
-
-        <template v-else-if="column.key === 'has_storage'">
-          <a-tag :color="record.has_storage ? 'blue' : 'default'">
-            {{ record.has_storage ? '是' : '否' }}
-          </a-tag>
-        </template>
-
-        <template v-else-if="column.key === 'is_active'">
-          <a-tag :color="record.is_active ? 'green' : 'red'">
-            {{ record.is_active ? '启用' : '已停用' }}
-          </a-tag>
-        </template>
-
-        <template v-else-if="column.key === 'actions'">
-          <a-space>
-            <a-button size="small" @click="openEditDialog(record)">编辑</a-button>
-            <a-popconfirm
-              :title="record.is_active ? '确定停用该电站？' : '确定启用该电站？'"
-              ok-text="确定"
-              cancel-text="取消"
-              @confirm="handleToggleActive(record)"
-            >
-              <a-button size="small" :danger="record.is_active">
-                {{ record.is_active ? '停用' : '启用' }}
-              </a-button>
-            </a-popconfirm>
-          </a-space>
-        </template>
-      </template>
-    </a-table>
+      </a-table>
+    </template>
 
     <!-- 创建电站对话框 -->
     <a-modal

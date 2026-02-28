@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.data_access import DataAccessContext, get_data_access_context, require_write_permission
 from app.core.database import get_db_session
 from app.core.dependencies import require_roles
 from app.core.ip_utils import get_client_ip
@@ -40,11 +41,11 @@ async def list_stations(
     province: str | None = Query(None),
     station_type: StationType | None = Query(None),
     is_active: bool | None = Query(None),
-    current_user: User = Depends(require_roles(["admin"])),
+    access_ctx: DataAccessContext = Depends(get_data_access_context),
     station_service: StationService = Depends(_get_station_service),
 ) -> StationListResponse:
-    stations, total = await station_service.list_stations(
-        page, page_size, search, province, station_type, is_active=is_active,
+    stations, total = await station_service.list_stations_for_user(
+        access_ctx, page, page_size, search, province, station_type, is_active=is_active,
     )
     return StationListResponse(
         items=[StationRead.model_validate(s) for s in stations],
@@ -56,21 +57,21 @@ async def list_stations(
 
 @router.get("/active", response_model=list[StationRead])
 async def list_all_active_stations(
-    current_user: User = Depends(require_roles(["admin"])),
+    access_ctx: DataAccessContext = Depends(get_data_access_context),
     station_service: StationService = Depends(_get_station_service),
 ) -> list[StationRead]:
-    """HIGH-7: 获取所有活跃电站（不分页，用于穿梭框）"""
-    stations = await station_service.get_all_active_stations()
+    """获取所有活跃电站（不分页），按用户权限过滤"""
+    stations = await station_service.get_all_active_stations_for_user(access_ctx)
     return [StationRead.model_validate(s) for s in stations]
 
 
 @router.get("/devices/active", response_model=list[StorageDeviceRead])
 async def list_all_active_devices(
-    current_user: User = Depends(require_roles(["admin"])),
+    access_ctx: DataAccessContext = Depends(get_data_access_context),
     station_service: StationService = Depends(_get_station_service),
 ) -> list[StorageDeviceRead]:
-    """获取所有活跃储能设备（用于绑定穿梭框），包含所属电站名称"""
-    devices, station_name_map = await station_service.get_all_active_devices_with_station_names()
+    """获取所有活跃储能设备，按用户权限过滤，包含所属电站名称"""
+    devices, station_name_map = await station_service.get_all_active_devices_for_user(access_ctx)
     return [
         StorageDeviceRead.model_validate(d).model_copy(
             update={"station_name": station_name_map.get(str(d.station_id))},
@@ -82,10 +83,10 @@ async def list_all_active_devices(
 @router.get("/{station_id}", response_model=StationRead)
 async def get_station(
     station_id: UUID,
-    current_user: User = Depends(require_roles(["admin"])),
+    access_ctx: DataAccessContext = Depends(get_data_access_context),
     station_service: StationService = Depends(_get_station_service),
 ) -> StationRead:
-    station = await station_service.get_station(station_id)
+    station = await station_service.get_station_for_user(access_ctx, station_id)
     return StationRead.model_validate(station)
 
 
@@ -94,6 +95,7 @@ async def create_station(
     body: StationCreate,
     request: Request,
     current_user: User = Depends(require_roles(["admin"])),
+    _write_check: User = Depends(require_write_permission),
     station_service: StationService = Depends(_get_station_service),
 ) -> StationRead:
     ip_address = get_client_ip(request)
@@ -107,6 +109,7 @@ async def update_station(
     body: StationUpdate,
     request: Request,
     current_user: User = Depends(require_roles(["admin"])),
+    _write_check: User = Depends(require_write_permission),
     station_service: StationService = Depends(_get_station_service),
 ) -> StationRead:
     ip_address = get_client_ip(request)
@@ -119,6 +122,7 @@ async def delete_station(
     station_id: UUID,
     request: Request,
     current_user: User = Depends(require_roles(["admin"])),
+    _write_check: User = Depends(require_write_permission),
     station_service: StationService = Depends(_get_station_service),
 ) -> None:
     ip_address = get_client_ip(request)

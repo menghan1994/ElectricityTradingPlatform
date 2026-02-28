@@ -2,6 +2,7 @@ from uuid import UUID
 
 import structlog
 
+from app.core.data_access import DataAccessContext
 from app.core.exceptions import BusinessError
 from app.models.station import PowerStation
 from app.models.storage import StorageDevice
@@ -189,6 +190,89 @@ class StationService:
         if not devices:
             return [], {}
         # 仅查询设备引用的电站，避免全表扫描所有活跃电站
+        referenced_station_ids = list({d.station_id for d in devices})
+        stations = await self.station_repo.get_by_ids(referenced_station_ids)
+        station_name_map = {str(s.id): s.name for s in stations}
+        return devices, station_name_map
+
+    # ── 带数据访问控制的方法 ──
+
+    async def list_stations_for_user(
+        self,
+        access_ctx: DataAccessContext,
+        page: int = 1,
+        page_size: int = 20,
+        search: str | None = None,
+        province: str | None = None,
+        station_type: str | None = None,
+        is_active: bool | None = None,
+    ) -> tuple[list[PowerStation], int]:
+        """按用户权限过滤的电站列表查询。"""
+        return await self.station_repo.get_all_paginated_filtered(
+            allowed_station_ids=access_ctx.station_ids,
+            page=page,
+            page_size=page_size,
+            search=search,
+            province=province,
+            station_type=station_type,
+            is_active=is_active,
+        )
+
+    async def get_station_for_user(
+        self,
+        access_ctx: DataAccessContext,
+        station_id: UUID,
+    ) -> PowerStation:
+        """获取单个电站，验证用户有权访问。
+
+        区分两种错误场景：
+        - 电站不存在 → 404 STATION_NOT_FOUND
+        - 电站存在但无权访问 → 403 STATION_ACCESS_DENIED
+        """
+        station = await self.station_repo.get_by_id(station_id)
+        if not station:
+            raise BusinessError(
+                code="STATION_NOT_FOUND",
+                message="电站不存在",
+                status_code=404,
+            )
+        # O(n) on tuple: 单次查找/请求，典型 n < 50，无需 frozenset
+        if access_ctx.station_ids is not None and station_id not in access_ctx.station_ids:
+            raise BusinessError(
+                code="STATION_ACCESS_DENIED",
+                message="无权访问该电站",
+                status_code=403,
+            )
+        return station
+
+    async def get_all_active_stations_for_user(
+        self,
+        access_ctx: DataAccessContext,
+    ) -> list[PowerStation]:
+        """按用户权限过滤的活跃电站列表。"""
+        return await self.station_repo.get_all_active_filtered(
+            allowed_station_ids=access_ctx.station_ids,
+        )
+
+    async def get_all_active_devices_for_user(
+        self,
+        access_ctx: DataAccessContext,
+    ) -> tuple[list[StorageDevice], dict[str, str]]:
+        """按用户权限过滤的活跃设备列表（含电站名称映射）。
+
+        过滤逻辑：
+        - admin/trading_manager/executive_readonly → device_ids=None, station_ids=None → 全部
+        - trader → device_ids=None, station_ids=[绑定电站] → 仅绑定电站下的设备
+        - storage_operator → device_ids=[绑定设备], station_ids=[设备所属电站] → 仅绑定设备
+        """
+        if not self.storage_repo:
+            raise RuntimeError("StorageDeviceRepository not injected")
+        devices = await self.storage_repo.get_all_active_filtered(
+            allowed_device_ids=access_ctx.device_ids,
+            allowed_station_ids=access_ctx.station_ids,
+        )
+        if not devices:
+            return [], {}
         referenced_station_ids = list({d.station_id for d in devices})
         stations = await self.station_repo.get_by_ids(referenced_station_ids)
         station_name_map = {str(s.id): s.name for s in stations}

@@ -14,9 +14,10 @@ from app.core.exceptions import BusinessError
 from app.main import app
 from app.models.station import PowerStation
 from app.models.user import User
+from app.schemas.user import RoleType
 
 
-def _make_user_obj(role: str = "admin") -> MagicMock:
+def _make_user_obj(role: "RoleType" = "admin") -> MagicMock:
     user = MagicMock(spec=User)
     user.id = uuid4()
     user.username = "admin"
@@ -54,13 +55,28 @@ def _create_mock_station_service(stations=None):
         stations = [_make_station_obj(name=f"电站{i}") for i in range(3)]
 
     service.list_stations.return_value = (stations, len(stations))
+    service.list_stations_for_user.return_value = (stations, len(stations))
     service.get_station.return_value = stations[0] if stations else None
+    service.get_station_for_user.return_value = stations[0] if stations else _make_station_obj()
     service.create_station.return_value = stations[0] if stations else _make_station_obj()
     service.update_station.return_value = stations[0] if stations else None
     service.delete_station.return_value = None
     service.get_all_active_stations.return_value = stations
+    service.get_all_active_stations_for_user.return_value = stations
+    service.get_all_active_devices_for_user.return_value = ([], {})
 
     return service
+
+
+def _make_data_access_context(user_id=None, role="admin", station_ids=None, device_ids=None):
+    from app.core.data_access import DataAccessContext
+
+    return DataAccessContext(
+        user_id=user_id or uuid4(),
+        role=role,
+        station_ids=tuple(station_ids) if station_ids is not None else None,
+        device_ids=tuple(device_ids) if device_ids is not None else None,
+    )
 
 
 @pytest_asyncio.fixture
@@ -74,12 +90,12 @@ async def api_client():
 class TestListStationsEndpoint:
     @pytest.mark.asyncio
     async def test_list_stations_as_admin(self, api_client):
-        admin = _make_user_obj(role="admin")
         mock_service = _create_mock_station_service()
+        admin_ctx = _make_data_access_context(role="admin")
 
         from app.api.v1.stations import _get_station_service
-        from app.core.dependencies import get_current_active_user
-        app.dependency_overrides[get_current_active_user] = lambda: admin
+        from app.core.data_access import get_data_access_context
+        app.dependency_overrides[get_data_access_context] = lambda: admin_ctx
         app.dependency_overrides[_get_station_service] = lambda: mock_service
 
         response = await api_client.get(
@@ -95,18 +111,22 @@ class TestListStationsEndpoint:
         assert "page_size" in data
 
     @pytest.mark.asyncio
-    async def test_list_stations_forbidden_for_non_admin(self, api_client):
-        trader = _make_user_obj(role="trader")
+    async def test_list_stations_accessible_for_trader(self, api_client):
+        """Story 1.5: 交易员可以访问电站列表（数据由后端过滤）"""
+        mock_service = _create_mock_station_service()
+        trader_ctx = _make_data_access_context(role="trader", station_ids=[uuid4()])
 
-        from app.core.dependencies import get_current_active_user
-        app.dependency_overrides[get_current_active_user] = lambda: trader
+        from app.api.v1.stations import _get_station_service
+        from app.core.data_access import get_data_access_context
+        app.dependency_overrides[get_data_access_context] = lambda: trader_ctx
+        app.dependency_overrides[_get_station_service] = lambda: mock_service
 
         response = await api_client.get(
             "/api/v1/stations",
             headers={"Authorization": "Bearer fake"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 200
 
 
 class TestCreateStationEndpoint:
@@ -228,16 +248,17 @@ class TestDeleteStationEndpoint:
 
 class TestErrorPaths:
     @pytest.mark.asyncio
-    async def test_station_not_found(self, api_client):
-        admin = _make_user_obj(role="admin")
+    async def test_station_access_denied(self, api_client):
+        """电站存在但用户无权访问时返回 403"""
+        admin_ctx = _make_data_access_context(role="admin")
         mock_service = _create_mock_station_service()
-        mock_service.get_station.side_effect = BusinessError(
-            code="STATION_NOT_FOUND", message="电站不存在", status_code=404,
+        mock_service.get_station_for_user.side_effect = BusinessError(
+            code="STATION_ACCESS_DENIED", message="无权访问该电站", status_code=403,
         )
 
         from app.api.v1.stations import _get_station_service
-        from app.core.dependencies import get_current_active_user
-        app.dependency_overrides[get_current_active_user] = lambda: admin
+        from app.core.data_access import get_data_access_context
+        app.dependency_overrides[get_data_access_context] = lambda: admin_ctx
         app.dependency_overrides[_get_station_service] = lambda: mock_service
 
         response = await api_client.get(
@@ -245,9 +266,9 @@ class TestErrorPaths:
             headers={"Authorization": "Bearer fake"},
         )
 
-        assert response.status_code == 404
+        assert response.status_code == 403
         data = response.json()
-        assert data["code"] == "STATION_NOT_FOUND"
+        assert data["code"] == "STATION_ACCESS_DENIED"
 
     @pytest.mark.asyncio
     async def test_duplicate_station_name(self, api_client):
