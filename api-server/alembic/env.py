@@ -8,6 +8,9 @@ from app.core.config import settings
 from app.models.base import Base
 from app.models.user import User  # noqa: F401 — Alembic 需要导入以检测模型
 from app.models.audit import AuditLog  # noqa: F401
+from app.models.station import PowerStation  # noqa: F401
+from app.models.storage import StorageDevice  # noqa: F401
+from app.models.binding import UserStationBinding, UserDeviceBinding  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

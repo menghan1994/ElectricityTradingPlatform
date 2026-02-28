@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { theme } from 'ant-design-vue'
 import type { ThemeConfig } from 'ant-design-vue/es/config-provider/context'
 import { useAuth } from '@/composables/useAuth'
@@ -18,6 +20,18 @@ const themeConfig: ThemeConfig = {
 }
 
 const { authStore } = useAuth()
+const route = useRoute()
+
+const menuKeyMap: Record<string, string> = {
+  '/': 'dashboard',
+  '/admin/users': 'user-management',
+  '/admin/stations': 'station-management',
+}
+
+const selectedKeys = computed(() => {
+  const key = menuKeyMap[route.path]
+  return key ? [key] : ['dashboard']
+})
 </script>
 
 <template>
@@ -27,12 +41,15 @@ const { authStore } = useAuth()
         <div style="height: 64px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.125rem; font-weight: 600;">
           电力交易平台
         </div>
-        <a-menu theme="dark" mode="inline">
+        <a-menu theme="dark" mode="inline" :selected-keys="selectedKeys">
           <a-menu-item key="dashboard">
             <router-link to="/">首页</router-link>
           </a-menu-item>
           <a-menu-item v-if="authStore.user?.role === 'admin'" key="user-management">
             <router-link to="/admin/users">用户管理</router-link>
+          </a-menu-item>
+          <a-menu-item v-if="authStore.user?.role === 'admin'" key="station-management">
+            <router-link to="/admin/stations">电站管理</router-link>
           </a-menu-item>
         </a-menu>
       </a-layout-sider>

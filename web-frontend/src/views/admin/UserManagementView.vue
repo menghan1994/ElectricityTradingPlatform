@@ -1,37 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
+import type { FormInstance } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
-import axios from 'axios'
+import { getErrorMessage } from '@/api/errors'
 import type { RoleType, UserRead } from '@/api/auth'
 import type { AdminUserCreate, UserUpdate } from '@/api/user'
 import { useUserStore } from '@/stores/user'
+import { roleLabels, roleColors, roleOptions } from '@/constants/roles'
+import BindingConfigDrawer from '@/components/admin/BindingConfigDrawer.vue'
 
 const userStore = useUserStore()
-
-const roleLabels: Record<string, string> = {
-  admin: '系统管理员',
-  trader: '交易员',
-  storage_operator: '储能运维员',
-  trading_manager: '交易主管',
-  executive_readonly: '高管只读',
-}
-
-const roleColors: Record<string, string> = {
-  admin: 'red',
-  trader: 'blue',
-  storage_operator: 'green',
-  trading_manager: 'orange',
-  executive_readonly: 'purple',
-}
-
-const roleOptions = [
-  { value: 'admin', label: '系统管理员' },
-  { value: 'trader', label: '交易员' },
-  { value: 'storage_operator', label: '储能运维员' },
-  { value: 'trading_manager', label: '交易主管' },
-  { value: 'executive_readonly', label: '高管只读' },
-]
 
 // Form validation rules
 const createFormRules: Record<string, Rule[]> = {
@@ -51,8 +30,8 @@ const editFormRules: Record<string, Rule[]> = {
   ],
 }
 
-const createFormRef = ref()
-const editFormRef = ref()
+const createFormRef = ref<FormInstance>()
+const editFormRef = ref<FormInstance>()
 
 // Create user dialog
 const createDialogVisible = ref(false)
@@ -88,6 +67,10 @@ const roleAssignUsername = ref('')
 const roleAssignValue = ref<RoleType | null>(null)
 const isAssigningRole = ref(false)
 
+// Binding drawer
+const bindingDrawerVisible = ref(false)
+const bindingTargetUser = ref<UserRead | null>(null)
+
 // Search
 const searchText = ref('')
 
@@ -99,13 +82,6 @@ const columns = [
   { title: '最后登录', dataIndex: 'last_login_at', key: 'last_login_at' },
   { title: '操作', key: 'actions', width: 320 },
 ]
-
-function getErrorMessage(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    return err.response?.data?.message || fallback
-  }
-  return err instanceof Error ? err.message : fallback
-}
 
 onMounted(() => {
   userStore.fetchUsers().catch(() => {
@@ -197,6 +173,11 @@ async function handleToggleActive(record: UserRead) {
   } catch (err: unknown) {
     message.error(getErrorMessage(err, '操作失败'))
   }
+}
+
+function openBindingDrawer(record: UserRead) {
+  bindingTargetUser.value = record
+  bindingDrawerVisible.value = true
 }
 
 function openRoleAssign(record: UserRead) {
@@ -321,6 +302,14 @@ const pagination = computed(() => ({
               </a-button>
             </a-popconfirm>
             <a-button size="small" @click="openRoleAssign(record)">角色</a-button>
+            <a-button
+              v-if="record.role === 'trader' || record.role === 'storage_operator'"
+              size="small"
+              type="link"
+              @click="openBindingDrawer(record)"
+            >
+              资源绑定
+            </a-button>
           </a-space>
         </template>
       </template>
@@ -412,5 +401,11 @@ const pagination = computed(() => ({
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- 资源绑定抽屉 -->
+    <BindingConfigDrawer
+      v-model:open="bindingDrawerVisible"
+      :user="bindingTargetUser"
+    />
   </div>
 </template>

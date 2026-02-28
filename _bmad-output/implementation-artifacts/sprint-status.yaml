@@ -45,7 +45,7 @@ development_status:
   1-1-project-scaffolding: done
   1-2-user-authentication: done
   1-3-user-account-management: done
-  1-4-trader-station-binding: backlog
+  1-4-trader-station-binding: done
   1-5-data-access-control: backlog
   epic-1-retrospective: optional
 
