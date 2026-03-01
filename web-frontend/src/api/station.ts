@@ -99,4 +99,9 @@ export const stationApi = {
     const response = await apiClient.get<StorageDeviceRead[]>('/stations/devices/active')
     return response.data
   },
+
+  async getStationDevices(stationId: string): Promise<StorageDeviceRead[]> {
+    const response = await apiClient.get<StorageDeviceRead[]>(`/stations/${stationId}/devices`)
+    return response.data
+  },
 }

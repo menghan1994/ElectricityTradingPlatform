@@ -41,18 +41,18 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: 项目基础设施与用户访问
-  epic-1: in-progress
+  epic-1: done
   1-1-project-scaffolding: done
   1-2-user-authentication: done
   1-3-user-account-management: done
   1-4-trader-station-binding: done
   1-5-data-access-control: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # Epic 2: 电站配置与数据管理
-  epic-2: backlog
-  2-1-station-storage-config-wizard: backlog
-  2-2-province-market-rules: backlog
+  epic-2: in-progress
+  2-1-station-storage-config-wizard: done
+  2-2-province-market-rules: done
   2-3-historical-data-import: backlog
   2-4-anomaly-data-management: backlog
   2-5-station-storage-data-import: backlog

@@ -1,0 +1,13 @@
+{
+  "price_cap_upper": 1500.00,
+  "price_cap_lower": 0.00,
+  "settlement_method": "spot",
+  "deviation_formula_type": "stepped",
+  "deviation_formula_params": {
+    "exemption_ratio": 0.03,
+    "steps": [
+      {"lower": 0.03, "upper": 0.05, "rate": 0.5},
+      {"lower": 0.05, "upper": 1.0, "rate": 1.0}
+    ]
+  }
+}

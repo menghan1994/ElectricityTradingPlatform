@@ -33,6 +33,7 @@ def _make_station_obj(**kwargs) -> MagicMock:
         "province": "广东",
         "capacity_mw": Decimal("100.00"),
         "station_type": "wind",
+        "grid_connection_point": None,
         "has_storage": False,
         "is_active": True,
         "created_at": datetime.now(UTC),

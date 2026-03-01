@@ -28,6 +28,7 @@ def _make_station(**kwargs):
         "province": "广东",
         "capacity_mw": Decimal("100.00"),
         "station_type": "wind",
+        "grid_connection_point": None,
         "has_storage": False,
         "is_active": True,
     }

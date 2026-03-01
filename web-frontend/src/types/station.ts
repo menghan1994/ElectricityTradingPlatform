@@ -11,6 +11,7 @@ export interface StationRead {
   province: string
   capacity_mw: string // Decimal → JSON string
   station_type: StationType
+  grid_connection_point: string | null
   has_storage: boolean
   is_active: boolean
   created_at: string
@@ -22,6 +23,7 @@ export interface StationCreate {
   province: string
   capacity_mw: number
   station_type: StationType
+  grid_connection_point?: string | null
   has_storage: boolean
 }
 
@@ -30,6 +32,7 @@ export interface StationUpdate {
   province?: string
   capacity_mw?: number
   station_type?: StationType
+  grid_connection_point?: string | null
   has_storage?: boolean
   is_active?: boolean
 }
@@ -41,6 +44,8 @@ export interface StationListResponse {
   page_size: number
 }
 
+export type BatteryType = 'lfp' | 'nmc' | 'lto' | 'other'
+
 export interface StorageDeviceRead {
   id: string
   station_id: string
@@ -51,6 +56,7 @@ export interface StorageDeviceRead {
   max_discharge_rate_mw: string
   soc_upper_limit: string
   soc_lower_limit: string
+  battery_type: BatteryType | null
   is_active: boolean
   created_at: string
   updated_at: string

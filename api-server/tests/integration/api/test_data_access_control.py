@@ -39,9 +39,10 @@ def _make_station_obj(**kwargs) -> MagicMock:
     defaults = {
         "id": uuid4(),
         "name": "测试电站",
-        "province": "广东",
+        "province": "guangdong",
         "capacity_mw": Decimal("100.00"),
         "station_type": "wind",
+        "grid_connection_point": None,
         "has_storage": False,
         "is_active": True,
         "created_at": datetime.now(UTC),
@@ -154,7 +155,7 @@ class TestTraderDataAccess:
             "/api/v1/stations",
             json={
                 "name": "新电站",
-                "province": "山东",
+                "province": "shandong",
                 "capacity_mw": 50.00,
                 "station_type": "solar",
             },
@@ -259,7 +260,7 @@ class TestTradingManagerWriteAccess:
             "/api/v1/stations",
             json={
                 "name": "新电站",
-                "province": "山东",
+                "province": "shandong",
                 "capacity_mw": 50.00,
                 "station_type": "solar",
             },
@@ -278,7 +279,7 @@ class TestTradingManagerWriteAccess:
 
         response = await api_client.put(
             f"/api/v1/stations/{uuid4()}",
-            json={"province": "山东"},
+            json={"province": "shandong"},
             headers={"Authorization": "Bearer fake"},
         )
 
@@ -315,7 +316,7 @@ class TestStorageOperatorWriteAccess:
             "/api/v1/stations",
             json={
                 "name": "新电站",
-                "province": "山东",
+                "province": "shandong",
                 "capacity_mw": 50.00,
                 "station_type": "solar",
             },
@@ -334,7 +335,7 @@ class TestStorageOperatorWriteAccess:
 
         response = await api_client.put(
             f"/api/v1/stations/{uuid4()}",
-            json={"province": "山东"},
+            json={"province": "shandong"},
             headers={"Authorization": "Bearer fake"},
         )
 
@@ -382,7 +383,7 @@ class TestExecutiveReadonlyDataAccess:
             "/api/v1/stations",
             json={
                 "name": "新电站",
-                "province": "山东",
+                "province": "shandong",
                 "capacity_mw": 50.00,
                 "station_type": "solar",
             },
@@ -400,7 +401,7 @@ class TestExecutiveReadonlyDataAccess:
 
         response = await api_client.put(
             f"/api/v1/stations/{uuid4()}",
-            json={"province": "山东"},
+            json={"province": "shandong"},
             headers={"Authorization": "Bearer fake"},
         )
 
@@ -486,7 +487,7 @@ class TestAdminFullAccess:
             "/api/v1/stations",
             json={
                 "name": "新电站",
-                "province": "山东",
+                "province": "shandong",
                 "capacity_mw": 50.00,
                 "station_type": "solar",
                 "has_storage": False,

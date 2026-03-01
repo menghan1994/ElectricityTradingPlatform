@@ -27,6 +27,8 @@ const menuKeyMap: Record<string, string> = {
   '/': 'dashboard',
   '/admin/users': 'user-management',
   '/admin/stations': 'station-management',
+  '/data/stations': 'station-config',
+  '/data/market-rules': 'market-rule-config',
 }
 
 const selectedKeys = computed(() => {
@@ -52,6 +54,14 @@ const selectedKeys = computed(() => {
           <a-menu-item v-if="canViewStation(authStore.user?.role)" key="station-management">
             <router-link to="/admin/stations">电站管理</router-link>
           </a-menu-item>
+          <a-sub-menu v-if="isAdmin(authStore.user?.role)" key="data-management" title="数据管理">
+            <a-menu-item key="station-config">
+              <router-link to="/data/stations">电站配置</router-link>
+            </a-menu-item>
+            <a-menu-item key="market-rule-config">
+              <router-link to="/data/market-rules">市场规则</router-link>
+            </a-menu-item>
+          </a-sub-menu>
         </a-menu>
       </a-layout-sider>
       <a-layout>

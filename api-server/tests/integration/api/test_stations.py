@@ -31,9 +31,10 @@ def _make_station_obj(**kwargs) -> MagicMock:
     defaults = {
         "id": uuid4(),
         "name": "测试电站",
-        "province": "广东",
+        "province": "guangdong",
         "capacity_mw": Decimal("100.00"),
         "station_type": "wind",
+        "grid_connection_point": None,
         "has_storage": False,
         "is_active": True,
         "created_at": datetime.now(UTC),
@@ -144,7 +145,7 @@ class TestCreateStationEndpoint:
             "/api/v1/stations",
             json={
                 "name": "新电站",
-                "province": "山东",
+                "province": "shandong",
                 "capacity_mw": 50.00,
                 "station_type": "solar",
                 "has_storage": False,
@@ -168,7 +169,7 @@ class TestCreateStationEndpoint:
             "/api/v1/stations",
             json={
                 "name": "新电站",
-                "province": "山东",
+                "province": "shandong",
                 "capacity_mw": 50.00,
                 "station_type": "solar",
             },
@@ -191,7 +192,7 @@ class TestUpdateStationEndpoint:
 
         response = await api_client.put(
             f"/api/v1/stations/{uuid4()}",
-            json={"province": "山东"},
+            json={"province": "shandong"},
             headers={"Authorization": "Bearer fake"},
         )
 
@@ -206,7 +207,7 @@ class TestUpdateStationEndpoint:
 
         response = await api_client.put(
             f"/api/v1/stations/{uuid4()}",
-            json={"province": "山东"},
+            json={"province": "shandong"},
             headers={"Authorization": "Bearer fake"},
         )
 
@@ -275,7 +276,7 @@ class TestErrorPaths:
         admin = _make_user_obj(role="admin")
         mock_service = _create_mock_station_service()
         mock_service.create_station.side_effect = BusinessError(
-            code="STATION_NAME_EXISTS", message="电站名称已存在", status_code=409,
+            code="STATION_NAME_DUPLICATE", message="电站名称已存在", status_code=409,
         )
 
         from app.api.v1.stations import _get_station_service
@@ -287,7 +288,7 @@ class TestErrorPaths:
             "/api/v1/stations",
             json={
                 "name": "重复电站",
-                "province": "广东",
+                "province": "guangdong",
                 "capacity_mw": 100.00,
                 "station_type": "wind",
             },
@@ -296,7 +297,7 @@ class TestErrorPaths:
 
         assert response.status_code == 409
         data = response.json()
-        assert data["code"] == "STATION_NAME_EXISTS"
+        assert data["code"] == "STATION_NAME_DUPLICATE"
 
     @pytest.mark.asyncio
     async def test_invalid_payload(self, api_client):

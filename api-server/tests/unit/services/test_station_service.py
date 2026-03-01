@@ -40,7 +40,7 @@ def _make_station(**kwargs):
     defaults = {
         "id": uuid4(),
         "name": "测试电站",
-        "province": "广东",
+        "province": "guangdong",
         "capacity_mw": Decimal("100.00"),
         "station_type": "wind",
         "has_storage": False,
@@ -70,7 +70,7 @@ class TestCreateStation:
 
         data = StationCreate(
             name="新电站",
-            province="山东",
+            province="shandong",
             capacity_mw=Decimal("50.00"),
             station_type="solar",
             has_storage=False,
@@ -78,7 +78,7 @@ class TestCreateStation:
         result = await station_service.create_station(admin, data, "192.168.1.1")
 
         assert result.name == "新电站"
-        assert result.province == "山东"
+        assert result.province == "shandong"
         mock_audit_service.log_action.assert_called_once()
 
     @pytest.mark.asyncio
@@ -88,7 +88,7 @@ class TestCreateStation:
 
         data = StationCreate(
             name="测试电站",
-            province="广东",
+            province="guangdong",
             capacity_mw=Decimal("100.00"),
             station_type="wind",
         )
@@ -96,7 +96,7 @@ class TestCreateStation:
         with pytest.raises(BusinessError) as exc_info:
             await station_service.create_station(admin, data)
 
-        assert exc_info.value.code == "STATION_NAME_EXISTS"
+        assert exc_info.value.code == "STATION_NAME_DUPLICATE"
         assert exc_info.value.status_code == 409
 
 
@@ -107,10 +107,10 @@ class TestUpdateStation:
         station = _make_station()
         mock_station_repo.get_by_id.return_value = station
 
-        data = StationUpdate(province="山东")
+        data = StationUpdate(province="shandong")
         result = await station_service.update_station(admin, station.id, data, "192.168.1.1")
 
-        assert station.province == "山东"
+        assert station.province == "shandong"
         mock_audit_service.log_action.assert_called_once()
 
     @pytest.mark.asyncio
@@ -118,7 +118,7 @@ class TestUpdateStation:
         admin = _make_admin()
         mock_station_repo.get_by_id.return_value = None
 
-        data = StationUpdate(province="山东")
+        data = StationUpdate(province="shandong")
 
         with pytest.raises(BusinessError) as exc_info:
             await station_service.update_station(admin, uuid4(), data)
@@ -137,7 +137,7 @@ class TestUpdateStation:
         with pytest.raises(BusinessError) as exc_info:
             await station_service.update_station(admin, station.id, data)
 
-        assert exc_info.value.code == "STATION_NAME_EXISTS"
+        assert exc_info.value.code == "STATION_NAME_DUPLICATE"
 
 
 class TestDeleteStation:

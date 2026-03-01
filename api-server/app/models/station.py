@@ -13,6 +13,7 @@ class PowerStation(Base, IdMixin, TimestampMixin):
     province: Mapped[str] = mapped_column(String(50), nullable=False)
     capacity_mw: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     station_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    grid_connection_point: Mapped[str | None] = mapped_column(String(200), nullable=True)
     has_storage: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 

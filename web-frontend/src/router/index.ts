@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RoleType } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { dataRoutes } from '@/router/modules/data.routes'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -36,6 +37,7 @@ const router = createRouter({
       component: () => import('@/views/admin/StationManagementView.vue'),
       meta: { requiresAuth: true, roles: ['admin', 'trader', 'storage_operator', 'trading_manager', 'executive_readonly'] },
     },
+    ...dataRoutes,
   ],
 })
 

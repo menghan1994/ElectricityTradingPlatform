@@ -26,6 +26,7 @@ class StorageDevice(Base, IdMixin, TimestampMixin):
     soc_lower_limit: Mapped[Decimal] = mapped_column(
         Numeric(5, 4), nullable=False, server_default=text("0.1"),
     )
+    battery_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (
@@ -37,4 +38,8 @@ class StorageDevice(Base, IdMixin, TimestampMixin):
         CheckConstraint("capacity_mwh > 0", name="ck_storage_devices_capacity"),
         CheckConstraint("max_charge_rate_mw > 0", name="ck_storage_devices_charge_rate"),
         CheckConstraint("max_discharge_rate_mw > 0", name="ck_storage_devices_discharge_rate"),
+        CheckConstraint(
+            "battery_type IS NULL OR battery_type IN ('lfp', 'nmc', 'lto', 'other')",
+            name="ck_storage_devices_battery_type",
+        ),
     )

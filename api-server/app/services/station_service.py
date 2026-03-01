@@ -1,6 +1,7 @@
 from uuid import UUID
 
 import structlog
+from sqlalchemy.exc import IntegrityError
 
 from app.core.data_access import DataAccessContext
 from app.core.exceptions import BusinessError
@@ -37,16 +38,25 @@ class StationService:
 
         existing = await self.station_repo.get_by_name(data.name)
         if existing:
-            raise BusinessError(code="STATION_NAME_EXISTS", message="电站名称已存在", status_code=409)
+            raise BusinessError(code="STATION_NAME_DUPLICATE", message="电站名称已存在", status_code=409)
 
         station = PowerStation(
             name=data.name,
             province=data.province,
             capacity_mw=data.capacity_mw,
             station_type=data.station_type,
-            has_storage=data.has_storage,
+            grid_connection_point=data.grid_connection_point,
+            has_storage=False,  # H2: 非向导创建路径始终 False
         )
-        created = await self.station_repo.create(station)
+        # H1: 捕获 IntegrityError 处理并发竞态（与 WizardService 一致）
+        try:
+            created = await self.station_repo.create(station)
+        except IntegrityError:
+            raise BusinessError(
+                code="STATION_NAME_DUPLICATE",
+                message="电站名称已存在",
+                status_code=409,
+            ) from None
 
         await self.audit_service.log_action(
             user_id=admin_user.id,
@@ -58,6 +68,7 @@ class StationService:
                 "province": created.province,
                 "capacity_mw": str(created.capacity_mw),
                 "station_type": created.station_type,
+                "grid_connection_point": created.grid_connection_point,
                 "has_storage": created.has_storage,
             },
             ip_address=ip_address,
@@ -89,7 +100,7 @@ class StationService:
         if "name" in update_data and update_data["name"] != station.name:
             existing = await self.station_repo.get_by_name(update_data["name"])
             if existing:
-                raise BusinessError(code="STATION_NAME_EXISTS", message="电站名称已存在", status_code=409)
+                raise BusinessError(code="STATION_NAME_DUPLICATE", message="电站名称已存在", status_code=409)
 
         changes_before: dict = {}
         changes_after: dict = {}
@@ -139,6 +150,14 @@ class StationService:
 
         station.is_active = False
         await self.station_repo.session.flush()
+
+        # M3: 级联停用关联储能设备
+        if self.storage_repo:
+            active_devices = await self.storage_repo.get_by_station_id(station_id)
+            for device in active_devices:
+                device.is_active = False
+            if active_devices:
+                await self.station_repo.session.flush()
 
         await self.audit_service.log_action(
             user_id=admin_user.id,
@@ -194,6 +213,18 @@ class StationService:
         stations = await self.station_repo.get_by_ids(referenced_station_ids)
         station_name_map = {str(s.id): s.name for s in stations}
         return devices, station_name_map
+
+    async def get_station_with_devices(
+        self, station_id: UUID,
+    ) -> tuple[PowerStation, list[StorageDevice]]:
+        """获取电站详情及其所有活跃储能设备。M2: 排除已停用电站。"""
+        station = await self.station_repo.get_by_id(station_id)
+        if not station or not station.is_active:
+            raise BusinessError(code="STATION_NOT_FOUND", message="电站不存在", status_code=404)
+        if not self.storage_repo:
+            raise RuntimeError("StorageDeviceRepository not injected")
+        devices = await self.storage_repo.get_by_station_id(station_id)
+        return station, devices
 
     # ── 带数据访问控制的方法 ──
 

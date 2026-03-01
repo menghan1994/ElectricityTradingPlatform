@@ -35,6 +35,7 @@ def _make_device_obj(**kwargs) -> MagicMock:
         "max_discharge_rate_mw": Decimal("10.00"),
         "soc_upper_limit": Decimal("0.9"),
         "soc_lower_limit": Decimal("0.1"),
+        "battery_type": None,
         "is_active": True,
         "created_at": datetime.now(UTC),
         "updated_at": datetime.now(UTC),

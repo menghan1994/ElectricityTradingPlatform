@@ -18,9 +18,12 @@ from app.schemas.station import (
     StationType,
     StationUpdate,
 )
-from app.schemas.storage import StorageDeviceRead
+from app.schemas.storage import StorageDeviceAddInput, StorageDeviceRead, StorageDeviceUpdate
 from app.services.audit_service import AuditService
 from app.services.station_service import StationService
+from app.services.wizard_service import WizardService  # noqa: TC002 — 端点类型注解需要
+# M2: 复用 wizard 模块的工厂函数，避免重复定义
+from app.api.v1.wizard import _get_wizard_service
 
 router = APIRouter()
 
@@ -127,3 +130,73 @@ async def delete_station(
 ) -> None:
     ip_address = get_client_ip(request)
     await station_service.delete_station(current_user, station_id, ip_address)
+
+
+# ── 储能设备子资源端点 ──
+
+
+@router.get("/{station_id}/devices", response_model=list[StorageDeviceRead])
+async def list_station_devices(
+    station_id: UUID,
+    access_ctx: DataAccessContext = Depends(get_data_access_context),
+    station_service: StationService = Depends(_get_station_service),
+) -> list[StorageDeviceRead]:
+    """获取指定电站下所有储能设备。"""
+    # C1: 使用 access_ctx 过滤电站访问权限（修复 IDOR）
+    await station_service.get_station_for_user(access_ctx, station_id)
+    _, devices = await station_service.get_station_with_devices(station_id)
+    return [StorageDeviceRead.model_validate(d) for d in devices]
+
+
+@router.post("/{station_id}/devices", response_model=StorageDeviceRead, status_code=201)
+async def add_device_to_station(
+    station_id: UUID,
+    body: StorageDeviceAddInput,
+    request: Request,
+    current_user: User = Depends(require_roles(["admin"])),
+    _write_check: User = Depends(require_write_permission),
+    wizard_service: WizardService = Depends(_get_wizard_service),
+) -> StorageDeviceRead:
+    """向已有电站添加储能设备。"""
+    # C2: 业务逻辑委托 WizardService（含 is_active 检查、has_storage 同步、完整审计）
+    ip_address = get_client_ip(request)
+    created = await wizard_service.add_device_to_station(
+        current_user, station_id, body, ip_address,
+    )
+    return StorageDeviceRead.model_validate(created)
+
+
+@router.put("/{station_id}/devices/{device_id}", response_model=StorageDeviceRead)
+async def update_station_device(
+    station_id: UUID,
+    device_id: UUID,
+    body: StorageDeviceUpdate,
+    request: Request,
+    current_user: User = Depends(require_roles(["admin"])),
+    _write_check: User = Depends(require_write_permission),
+    wizard_service: WizardService = Depends(_get_wizard_service),
+) -> StorageDeviceRead:
+    """更新储能设备参数（支持 SOC 单字段更新完整交叉校验）。"""
+    ip_address = get_client_ip(request)
+    update_data = body.model_dump(exclude_unset=True)
+    device = await wizard_service.update_storage_device(
+        current_user, station_id, device_id, update_data, ip_address,
+    )
+    return StorageDeviceRead.model_validate(device)
+
+
+@router.delete("/{station_id}/devices/{device_id}", status_code=204)
+async def delete_station_device(
+    station_id: UUID,
+    device_id: UUID,
+    request: Request,
+    current_user: User = Depends(require_roles(["admin"])),
+    _write_check: User = Depends(require_write_permission),
+    wizard_service: WizardService = Depends(_get_wizard_service),
+) -> None:
+    """删除储能设备（软删除）。"""
+    # C2: 业务逻辑委托 WizardService（含 is_active 检查、has_storage 同步）
+    ip_address = get_client_ip(request)
+    await wizard_service.delete_station_device(
+        current_user, station_id, device_id, ip_address,
+    )
