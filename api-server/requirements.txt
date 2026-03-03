@@ -1,6 +1,7 @@
 # Web framework
 fastapi==0.133.0
 uvicorn[standard]==0.34.0
+python-multipart==0.0.20
 
 # Database
 sqlalchemy[asyncio]==2.0.38
@@ -19,6 +20,10 @@ PyJWT==2.11.0
 # Async tasks
 celery==5.6.0
 redis==5.2.1
+
+# Data import
+openpyxl==3.1.5
+psycopg2-binary==2.9.10
 
 # Logging
 structlog==25.1.0

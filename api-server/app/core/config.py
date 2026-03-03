@@ -44,6 +44,10 @@ class Settings:
     CELERY_BROKER_URL: str = config("CELERY_BROKER_URL", default="redis://redis:6379/1")
     CELERY_RESULT_BACKEND: str = config("CELERY_RESULT_BACKEND", default="redis://redis:6379/2")
 
+    # Data Import
+    DATA_IMPORT_DIR: str = config("DATA_IMPORT_DIR", default="./data/imports")
+    MAX_IMPORT_FILE_SIZE: int = config("MAX_IMPORT_FILE_SIZE", default=104857600, cast=int)  # 100MB
+
     # App
     APP_ENV: str = config("APP_ENV", default="development")
     APP_DEBUG: bool = config("APP_DEBUG", default=True, cast=bool)

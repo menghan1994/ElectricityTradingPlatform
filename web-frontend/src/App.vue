@@ -29,6 +29,7 @@ const menuKeyMap: Record<string, string> = {
   '/admin/stations': 'station-management',
   '/data/stations': 'station-config',
   '/data/market-rules': 'market-rule-config',
+  '/data/import': 'data-import',
 }
 
 const selectedKeys = computed(() => {
@@ -60,6 +61,9 @@ const selectedKeys = computed(() => {
             </a-menu-item>
             <a-menu-item key="market-rule-config">
               <router-link to="/data/market-rules">市场规则</router-link>
+            </a-menu-item>
+            <a-menu-item key="data-import">
+              <router-link to="/data/import">数据导入</router-link>
             </a-menu-item>
           </a-sub-menu>
         </a-menu>

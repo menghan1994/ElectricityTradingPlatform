@@ -97,6 +97,14 @@ async function loadBindingData() {
   }
 }
 
+function renderTransferItem(item: { title: string }): string {
+  return item.title
+}
+
+function filterTransferOption(inputValue: string, option: { title: string; description: string }): boolean {
+  return option.title.includes(inputValue) || option.description.includes(inputValue)
+}
+
 function handleStationTransferChange(targetKeys: (string | number)[]) {
   selectedStationIds.value = targetKeys.map(String)
 }
@@ -153,11 +161,10 @@ function handleClose() {
           :data-source="stationTransferData"
           :target-keys="selectedStationIds"
           :titles="['可选电站', '已绑定电站']"
-          :render="(item: { title: string }) => item.title"
+          :render="renderTransferItem"
           :list-style="{ width: '260px', height: '400px' }"
           show-search
-          :filter-option="(inputValue: string, option: { title: string; description: string }) =>
-            option.title.includes(inputValue) || option.description.includes(inputValue)"
+          :filter-option="filterTransferOption"
           @change="handleStationTransferChange"
         />
       </template>
@@ -170,11 +177,10 @@ function handleClose() {
           :data-source="deviceTransferData"
           :target-keys="selectedDeviceIds"
           :titles="['可选设备', '已绑定设备']"
-          :render="(item: { title: string }) => item.title"
+          :render="renderTransferItem"
           :list-style="{ width: '260px', height: '400px' }"
           show-search
-          :filter-option="(inputValue: string, option: { title: string; description: string }) =>
-            option.title.includes(inputValue) || option.description.includes(inputValue)"
+          :filter-option="filterTransferOption"
           @change="handleDeviceTransferChange"
         />
       </template>

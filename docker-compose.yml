@@ -25,6 +25,8 @@ services:
       - "8000:8000"
     env_file:
       - .env.development
+    volumes:
+      - import-data:/app/data/imports
     depends_on:
       postgresql:
         condition: service_healthy
@@ -46,6 +48,8 @@ services:
     command: celery -A app.tasks.celery_app worker --loglevel=info
     env_file:
       - .env.development
+    volumes:
+      - import-data:/app/data/imports
     depends_on:
       api-server:
         condition: service_healthy
@@ -168,6 +172,7 @@ volumes:
   postgres-data:
   redis-data:
   ollama-data:
+  import-data:
 
 networks:
   app-network:

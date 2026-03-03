@@ -53,8 +53,8 @@ development_status:
   epic-2: in-progress
   2-1-station-storage-config-wizard: done
   2-2-province-market-rules: done
-  2-3-historical-data-import: backlog
-  2-4-anomaly-data-management: backlog
+  2-3-historical-data-import: done
+  2-4-anomaly-data-management: ready-for-dev
   2-5-station-storage-data-import: backlog
   2-6-market-data-auto-fetch: backlog
   epic-2-retrospective: optional
