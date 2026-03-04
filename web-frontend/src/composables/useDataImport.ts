@@ -2,7 +2,7 @@ import { onScopeDispose, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { dataImportApi } from '@/api/dataImport'
 import { getErrorMessage } from '@/api/errors'
-import type { ImportJob, ImportJobListResponse, ImportResult } from '@/types/dataImport'
+import type { EmsFormat, ImportJob, ImportJobListResponse, ImportResult, ImportType } from '@/types/dataImport'
 
 const MAX_POLL_ERRORS = 5
 
@@ -13,6 +13,8 @@ export function useDataImport() {
   const isPolling = ref(false)
   const importHistory = ref<ImportJobListResponse | null>(null)
   const isLoadingHistory = ref(false)
+  const activeImportType = ref<ImportType>('trading_data')
+  const activeEmsFormat = ref<EmsFormat>('standard')
 
   let pollingTimer: ReturnType<typeof setTimeout> | null = null
   let pollingVersion = 0
@@ -22,16 +24,23 @@ export function useDataImport() {
     stopPolling()
   })
 
-  async function uploadFile(file: File, stationId: string): Promise<void> {
+  async function uploadFile(
+    file: File,
+    stationId: string,
+    importType?: ImportType,
+    emsFormat?: EmsFormat,
+  ): Promise<void> {
     isUploading.value = true
     importResult.value = null
+    const type = importType ?? activeImportType.value
+    const format = emsFormat ?? (type === 'storage_operation' ? activeEmsFormat.value : undefined)
     try {
-      const job = await dataImportApi.uploadTradingData(file, stationId)
+      const job = await dataImportApi.uploadImportData(file, stationId, type, format)
       currentJob.value = job
       message.success('文件上传成功，开始导入...')
       startPolling(job.id)
-      // 立即刷新导入历史，显示新任务
-      await loadImportHistory()
+      // 静默刷新导入历史，失败不影响上传成功提示
+      loadImportHistory().catch(() => {})
     } catch (e) {
       message.error(getErrorMessage(e, '文件上传失败，请稍后重试'))
     } finally {
@@ -119,11 +128,14 @@ export function useDataImport() {
     stationId?: string,
     page: number = 1,
     pageSize: number = 20,
+    importType?: ImportType,
   ): Promise<void> {
     isLoadingHistory.value = true
     try {
       const params: Record<string, string | number> = { page, page_size: pageSize }
       if (stationId) params.station_id = stationId
+      const type = importType ?? activeImportType.value
+      if (type) params.import_type = type
       importHistory.value = await dataImportApi.listImportJobs(params)
     } catch (e) {
       message.error(getErrorMessage(e, '加载导入历史失败'))
@@ -153,6 +165,8 @@ export function useDataImport() {
     isPolling,
     importHistory,
     isLoadingHistory,
+    activeImportType,
+    activeEmsFormat,
     uploadFile,
     startPolling,
     stopPolling,

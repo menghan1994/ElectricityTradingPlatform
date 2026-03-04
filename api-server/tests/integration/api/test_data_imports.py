@@ -49,6 +49,8 @@ def _make_job(job_id=None, status="pending"):
     job.original_file_name = "test.csv"
     job.file_size = 1024
     job.station_id = _STATION_ID
+    job.import_type = "trading_data"
+    job.ems_format = None
     job.status = status
     job.total_records = 100
     job.processed_records = 100

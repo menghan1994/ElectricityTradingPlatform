@@ -3,18 +3,29 @@ import { ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import type { StationRead } from '@/types/station'
+import type { EmsFormat, ImportType } from '@/types/dataImport'
+import EmsFormatSelector from '@/components/data/EmsFormatSelector.vue'
 
 const props = defineProps<{
   stations: StationRead[]
   isUploading: boolean
+  importType: ImportType
+  emsFormat: EmsFormat
 }>()
 
 const emit = defineEmits<{
   (e: 'upload', file: File, stationId: string): void
+  (e: 'update:emsFormat', value: EmsFormat): void
 }>()
 
 const selectedStationId = ref<string | null>(null)
 const selectedFile = ref<File | null>(null)
+
+const uploadHintMap: Record<ImportType, string> = {
+  trading_data: '字段：交易日期、时段(1-96)、出清价格',
+  station_output: '字段：交易日期、时段(1-96)、实际出力(kW)',
+  storage_operation: '字段：交易日期、时段(1-96)、SOC、充放电功率(kW)、循环次数',
+}
 
 function handleBeforeUpload(file: File): false {
   const ext = file.name.split('.').pop()?.toLowerCase()
@@ -66,9 +77,10 @@ function handleStartImport(): void {
       </p>
       <p class="ant-upload-text">拖拽文件到此区域，或点击上传</p>
       <p class="ant-upload-hint">支持 .xlsx / .csv 格式，单文件最大 100MB</p>
+      <p class="ant-upload-hint">{{ uploadHintMap[importType] }}</p>
     </a-upload-dragger>
 
-    <div style="margin-top: 16px; display: flex; align-items: center; gap: 16px;">
+    <div style="margin-top: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
       <span>目标电站:</span>
       <a-select
         v-model:value="selectedStationId"
@@ -86,6 +98,12 @@ function handleStartImport(): void {
           {{ station.name }}
         </a-select-option>
       </a-select>
+
+      <EmsFormatSelector
+        v-if="importType === 'storage_operation'"
+        :model-value="emsFormat"
+        @update:model-value="emit('update:emsFormat', $event)"
+      />
     </div>
 
     <div style="margin-top: 16px;">

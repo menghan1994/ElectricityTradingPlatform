@@ -30,6 +30,8 @@ const menuKeyMap: Record<string, string> = {
   '/data/stations': 'station-config',
   '/data/market-rules': 'market-rule-config',
   '/data/import': 'data-import',
+  '/data/anomalies': 'anomaly-management',
+  '/data/market-data': 'market-data',
 }
 
 const selectedKeys = computed(() => {
@@ -64,6 +66,12 @@ const selectedKeys = computed(() => {
             </a-menu-item>
             <a-menu-item key="data-import">
               <router-link to="/data/import">数据导入</router-link>
+            </a-menu-item>
+            <a-menu-item key="anomaly-management">
+              <router-link to="/data/anomalies">异常数据</router-link>
+            </a-menu-item>
+            <a-menu-item key="market-data">
+              <router-link to="/data/market-data">市场数据</router-link>
             </a-menu-item>
           </a-sub-menu>
         </a-menu>

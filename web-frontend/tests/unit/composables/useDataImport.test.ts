@@ -4,13 +4,15 @@ import { defineComponent } from 'vue'
 
 vi.mock('../../../src/api/dataImport', () => ({
   dataImportApi: {
-    uploadTradingData: vi.fn(),
+    uploadImportData: vi.fn(),
     listImportJobs: vi.fn(),
     getImportJob: vi.fn(),
     getImportResult: vi.fn(),
     getImportAnomalies: vi.fn(),
     resumeImport: vi.fn(),
     cancelImport: vi.fn(),
+    getOutputRecords: vi.fn(),
+    getStorageRecords: vi.fn(),
   },
 }))
 
@@ -50,6 +52,7 @@ const mockJob: ImportJob = {
   original_file_name: 'test.csv',
   file_size: 1024,
   station_id: 'station-1',
+  import_type: 'trading_data',
   status: 'pending',
   total_records: 0,
   processed_records: 0,
@@ -119,7 +122,7 @@ describe('useDataImport', () => {
 
   describe('uploadFile', () => {
     it('should upload file and set currentJob on success', async () => {
-      vi.mocked(dataImportApi.uploadTradingData).mockResolvedValue(mockJob)
+      vi.mocked(dataImportApi.uploadImportData).mockResolvedValue(mockJob)
       vi.mocked(dataImportApi.getImportJob).mockResolvedValue(mockJob)
 
       const { result, unmount } = withSetup(() => useDataImport())
@@ -127,7 +130,7 @@ describe('useDataImport', () => {
 
       await result.uploadFile(file, 'station-1')
 
-      expect(dataImportApi.uploadTradingData).toHaveBeenCalledWith(file, 'station-1')
+      expect(dataImportApi.uploadImportData).toHaveBeenCalledWith(file, 'station-1', 'trading_data', undefined)
       expect(result.currentJob.value).toEqual(mockJob)
       expect(vi.mocked(message.success)).toHaveBeenCalledWith('文件上传成功，开始导入...')
       result.stopPolling()
@@ -135,7 +138,7 @@ describe('useDataImport', () => {
     })
 
     it('should show error message on upload failure', async () => {
-      vi.mocked(dataImportApi.uploadTradingData).mockRejectedValue(new Error('网络错误'))
+      vi.mocked(dataImportApi.uploadImportData).mockRejectedValue(new Error('网络错误'))
 
       const { result, unmount } = withSetup(() => useDataImport())
       const file = new File(['data'], 'test.csv', { type: 'text/csv' })
@@ -149,7 +152,7 @@ describe('useDataImport', () => {
 
     it('should manage uploading state', async () => {
       let resolvePromise!: (value: ImportJob) => void
-      vi.mocked(dataImportApi.uploadTradingData).mockReturnValue(
+      vi.mocked(dataImportApi.uploadImportData).mockReturnValue(
         new Promise((resolve) => { resolvePromise = resolve }),
       )
 
@@ -221,27 +224,33 @@ describe('useDataImport', () => {
   })
 
   describe('loadImportHistory', () => {
-    it('should load history from API', async () => {
+    it('should load history from API with default import_type', async () => {
       vi.mocked(dataImportApi.listImportJobs).mockResolvedValue(mockHistory)
 
       const { result, unmount } = withSetup(() => useDataImport())
       await result.loadImportHistory()
 
-      expect(dataImportApi.listImportJobs).toHaveBeenCalledWith({ page: 1, page_size: 20 })
+      expect(dataImportApi.listImportJobs).toHaveBeenCalledWith({
+        page: 1,
+        page_size: 20,
+        import_type: 'trading_data',
+      })
       expect(result.importHistory.value).toEqual(mockHistory)
       unmount()
     })
 
-    it('should pass stationId when provided', async () => {
+    it('should pass stationId and import_type when provided', async () => {
       vi.mocked(dataImportApi.listImportJobs).mockResolvedValue(mockHistory)
 
       const { result, unmount } = withSetup(() => useDataImport())
+      result.activeImportType.value = 'station_output'
       await result.loadImportHistory('station-1', 2, 10)
 
       expect(dataImportApi.listImportJobs).toHaveBeenCalledWith({
         page: 2,
         page_size: 10,
         station_id: 'station-1',
+        import_type: 'station_output',
       })
       unmount()
     })
@@ -276,7 +285,7 @@ describe('useDataImport', () => {
 
   describe('resetCurrentJob', () => {
     it('should reset currentJob and importResult', async () => {
-      vi.mocked(dataImportApi.uploadTradingData).mockResolvedValue(mockJob)
+      vi.mocked(dataImportApi.uploadImportData).mockResolvedValue(mockJob)
       vi.mocked(dataImportApi.getImportJob).mockResolvedValue(mockJob)
 
       const { result, unmount } = withSetup(() => useDataImport())
@@ -436,6 +445,54 @@ describe('useDataImport', () => {
       await result.loadImportResult('job-1')
 
       expect(vi.mocked(message.error)).toHaveBeenCalled()
+      unmount()
+    })
+  })
+
+  describe('activeImportType and activeEmsFormat', () => {
+    it('should default to trading_data', () => {
+      const { result, unmount } = withSetup(() => useDataImport())
+      expect(result.activeImportType.value).toBe('trading_data')
+      unmount()
+    })
+
+    it('should default to standard ems format', () => {
+      const { result, unmount } = withSetup(() => useDataImport())
+      expect(result.activeEmsFormat.value).toBe('standard')
+      unmount()
+    })
+
+    it('should pass ems format for storage_operation uploads', async () => {
+      const storageJob = { ...mockJob, import_type: 'storage_operation' as const }
+      vi.mocked(dataImportApi.uploadImportData).mockResolvedValue(storageJob)
+      vi.mocked(dataImportApi.listImportJobs).mockResolvedValue(mockHistory)
+
+      const { result, unmount } = withSetup(() => useDataImport())
+      result.activeImportType.value = 'storage_operation'
+      result.activeEmsFormat.value = 'sungrow'
+
+      await result.uploadFile(new File(['data'], 'test.csv'), 'station-1')
+
+      expect(dataImportApi.uploadImportData).toHaveBeenCalledWith(
+        expect.any(File), 'station-1', 'storage_operation', 'sungrow',
+      )
+      result.stopPolling()
+      unmount()
+    })
+
+    it('should not pass ems format for non-storage uploads', async () => {
+      vi.mocked(dataImportApi.uploadImportData).mockResolvedValue(mockJob)
+      vi.mocked(dataImportApi.listImportJobs).mockResolvedValue(mockHistory)
+
+      const { result, unmount } = withSetup(() => useDataImport())
+      result.activeImportType.value = 'station_output'
+
+      await result.uploadFile(new File(['data'], 'test.csv'), 'station-1')
+
+      expect(dataImportApi.uploadImportData).toHaveBeenCalledWith(
+        expect.any(File), 'station-1', 'station_output', undefined,
+      )
+      result.stopPolling()
       unmount()
     })
   })

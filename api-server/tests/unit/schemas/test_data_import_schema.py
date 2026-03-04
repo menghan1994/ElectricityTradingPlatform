@@ -26,6 +26,8 @@ class TestImportJobRead:
             original_file_name = "test.csv"
             file_size = 1024
             station_id = "550e8400-e29b-41d4-a716-446655440001"
+            import_type = "trading_data"
+            ems_format = None
             status = "completed"
             total_records = 100
             processed_records = 100
@@ -57,6 +59,8 @@ class TestImportJobRead:
             original_file_name = "test.csv"
             file_size = 1024
             station_id = "550e8400-e29b-41d4-a716-446655440001"
+            import_type = "trading_data"
+            ems_format = None
             status = "pending"
             total_records = 0
             processed_records = 0

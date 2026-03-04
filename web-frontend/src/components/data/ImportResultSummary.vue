@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ImportJob, ImportResult } from '@/types/dataImport'
+import { IMPORT_TYPE_LABELS } from '@/types/dataImport'
+
+const importTypeLabels = IMPORT_TYPE_LABELS
 
 const props = defineProps<{
   job: ImportJob
@@ -17,11 +20,14 @@ const resultStatus = computed(() => {
   return 'info'
 })
 
+const importTypeLabel = computed(() => importTypeLabels[props.job.import_type] ?? '')
+
 const resultTitle = computed(() => {
-  if (props.job.status === 'completed') return '导入完成'
-  if (props.job.status === 'failed') return '导入失败'
-  if (props.job.status === 'cancelled') return '导入已取消'
-  return '导入状态'
+  const typeLabel = importTypeLabel.value ? `${importTypeLabel.value} - ` : ''
+  if (props.job.status === 'completed') return `${typeLabel}导入完成`
+  if (props.job.status === 'failed') return `${typeLabel}导入失败`
+  if (props.job.status === 'cancelled') return `${typeLabel}导入已取消`
+  return `${typeLabel}导入状态`
 })
 
 const canResume = computed(() =>
@@ -38,6 +44,7 @@ const anomalyTypeLabels: Record<string, string> = {
 const anomalyColumns = [
   { title: '异常类型', dataIndex: 'anomaly_type', key: 'anomaly_type' },
   { title: '数量', dataIndex: 'count', key: 'count' },
+  { title: '操作', key: 'actions', width: 100 },
 ]
 </script>
 
@@ -86,6 +93,11 @@ const anomalyColumns = [
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'anomaly_type'">
             {{ anomalyTypeLabels[record.anomaly_type] || record.anomaly_type }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <router-link :to="{ path: '/data/anomalies', query: { import_job_id: job.id } }">
+              查看详情
+            </router-link>
           </template>
         </template>
       </a-table>

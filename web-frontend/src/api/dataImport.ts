@@ -1,16 +1,29 @@
 import apiClient from './client'
 import type {
+  EmsFormat,
   ImportAnomalyListResponse,
   ImportJob,
   ImportJobListResponse,
   ImportResult,
+  ImportType,
+  StationOutputRecordListResponse,
+  StorageOperationRecordListResponse,
 } from '@/types/dataImport'
 
 export const dataImportApi = {
-  async uploadTradingData(file: File, stationId: string): Promise<ImportJob> {
+  async uploadImportData(
+    file: File,
+    stationId: string,
+    importType: ImportType = 'trading_data',
+    emsFormat?: EmsFormat,
+  ): Promise<ImportJob> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('station_id', stationId)
+    formData.append('import_type', importType)
+    if (emsFormat) {
+      formData.append('ems_format', emsFormat)
+    }
     const response = await apiClient.post<ImportJob>('/data-imports/upload', formData, {
       timeout: 120000,
     })
@@ -22,6 +35,7 @@ export const dataImportApi = {
     page?: number
     page_size?: number
     status?: string
+    import_type?: ImportType
   }): Promise<ImportJobListResponse> {
     const response = await apiClient.get<ImportJobListResponse>('/data-imports', { params })
     return response.data
@@ -55,6 +69,28 @@ export const dataImportApi = {
 
   async cancelImport(jobId: string): Promise<ImportJob> {
     const response = await apiClient.post<ImportJob>(`/data-imports/${jobId}/cancel`)
+    return response.data
+  },
+
+  async getOutputRecords(
+    jobId: string,
+    params: { page?: number; page_size?: number },
+  ): Promise<StationOutputRecordListResponse> {
+    const response = await apiClient.get<StationOutputRecordListResponse>(
+      `/data-imports/${jobId}/output-records`,
+      { params },
+    )
+    return response.data
+  },
+
+  async getStorageRecords(
+    jobId: string,
+    params: { page?: number; page_size?: number },
+  ): Promise<StorageOperationRecordListResponse> {
+    const response = await apiClient.get<StorageOperationRecordListResponse>(
+      `/data-imports/${jobId}/storage-records`,
+      { params },
+    )
     return response.data
   },
 }

@@ -50,13 +50,13 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: 电站配置与数据管理
-  epic-2: in-progress
+  epic-2: done
   2-1-station-storage-config-wizard: done
   2-2-province-market-rules: done
   2-3-historical-data-import: done
-  2-4-anomaly-data-management: ready-for-dev
-  2-5-station-storage-data-import: backlog
-  2-6-market-data-auto-fetch: backlog
+  2-4-anomaly-data-management: done
+  2-5-station-storage-data-import: done
+  2-6-market-data-auto-fetch: done
   epic-2-retrospective: optional
 
   # Epic 3: 功率预测与数据可视化

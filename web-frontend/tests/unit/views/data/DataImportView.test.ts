@@ -15,6 +15,8 @@ const mockIsUploading = ref(false)
 const mockIsPolling = ref(false)
 const mockImportHistory = ref(null)
 const mockIsLoadingHistory = ref(false)
+const mockActiveImportType = ref('trading_data')
+const mockActiveEmsFormat = ref('standard')
 
 vi.mock('../../../../src/composables/useDataImport', () => ({
   useDataImport: () => ({
@@ -24,6 +26,8 @@ vi.mock('../../../../src/composables/useDataImport', () => ({
     isPolling: mockIsPolling,
     importHistory: mockImportHistory,
     isLoadingHistory: mockIsLoadingHistory,
+    activeImportType: mockActiveImportType,
+    activeEmsFormat: mockActiveEmsFormat,
     uploadFile: mockUploadFile,
     stopPolling: mockStopPolling,
     cancelImport: mockCancelImport,
@@ -57,12 +61,23 @@ describe('DataImportView', () => {
     mockIsPolling.value = false
     mockImportHistory.value = null
     mockIsLoadingHistory.value = false
+    mockActiveImportType.value = 'trading_data'
+    mockActiveEmsFormat.value = 'standard'
   })
 
   function mountView() {
     return mount(DataImportView, {
       global: {
         stubs: {
+          'a-tabs': {
+            template: '<div class="tabs"><slot /></div>',
+            props: ['activeKey'],
+            emits: ['change'],
+          },
+          'a-tab-pane': {
+            template: '<div class="tab-pane" />',
+            props: ['tab'],
+          },
           'a-spin': { template: '<div class="spin"><slot /></div>', props: ['spinning'] },
           'a-divider': { template: '<div class="divider"><slot /></div>' },
           'a-table': { template: '<div class="table" />', props: ['columns', 'dataSource', 'loading', 'pagination', 'rowKey', 'size'] },
@@ -70,8 +85,8 @@ describe('DataImportView', () => {
           'a-button': { template: '<button @click="$emit(\'click\')"><slot /></button>', emits: ['click'] },
           ImportUploader: {
             template: '<div class="uploader" />',
-            props: ['stations', 'isUploading'],
-            emits: ['upload'],
+            props: ['stations', 'isUploading', 'importType', 'emsFormat'],
+            emits: ['upload', 'update:emsFormat'],
           },
           ImportProgressPanel: {
             template: '<div class="progress-panel" />',
@@ -157,5 +172,21 @@ describe('DataImportView', () => {
   it('should render history divider', () => {
     const wrapper = mountView()
     expect(wrapper.text()).toContain('导入历史')
+  })
+
+  it('should render tabs for import types', () => {
+    const wrapper = mountView()
+    const tabPanes = wrapper.findAll('.tab-pane')
+    expect(tabPanes).toHaveLength(3)
+  })
+
+  it('should handle tab change and reset job', async () => {
+    const wrapper = mountView()
+    const vm = wrapper.vm as any
+
+    vm.handleTabChange('station_output')
+
+    expect(mockActiveImportType.value).toBe('station_output')
+    expect(mockResetCurrentJob).toHaveBeenCalled()
   })
 })

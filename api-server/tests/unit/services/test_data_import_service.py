@@ -24,11 +24,13 @@ def _make_admin(user_id=None):
     return user
 
 
-def _make_job(job_id=None, status="pending", station_id=None):
+def _make_job(job_id=None, status="pending", station_id=None, import_type="trading_data", ems_format=None):
     job = MagicMock()
     job.id = job_id or uuid.uuid4()
     job.status = status
     job.station_id = station_id or uuid.uuid4()
+    job.import_type = import_type
+    job.ems_format = ems_format
     job.celery_task_id = "celery-task-123"
     job.last_processed_row = 500
     job.original_file_name = "test.csv"
@@ -262,12 +264,14 @@ class TestResumeImportJob:
         admin = _make_admin()
 
         with patch("app.tasks.import_tasks.process_trading_data_import") as mock_task:
-            mock_task.delay.return_value = MagicMock(id="celery-resume-123")
+            mock_task.apply_async.return_value = MagicMock(id="celery-resume-123")
             result = await service.resume_import_job(job.id, admin, "127.0.0.1")
 
         assert job.status == "processing"
         assert job.error_message is None
-        mock_task.delay.assert_called_once_with(str(job.id), resume_from_row=500)
+        mock_task.apply_async.assert_called_once_with(
+            kwargs={"job_id": str(job.id), "resume_from_row": 500},
+        )
         mock_audit_service.log_action.assert_called_once()
         assert job.celery_task_id == "celery-resume-123"
         assert result == job
@@ -282,11 +286,13 @@ class TestResumeImportJob:
         admin = _make_admin()
 
         with patch("app.tasks.import_tasks.process_trading_data_import") as mock_task:
-            mock_task.delay.return_value = MagicMock(id="celery-resume-456")
+            mock_task.apply_async.return_value = MagicMock(id="celery-resume-456")
             result = await service.resume_import_job(job.id, admin)
 
         assert job.status == "processing"
-        mock_task.delay.assert_called_once_with(str(job.id), resume_from_row=200)
+        mock_task.apply_async.assert_called_once_with(
+            kwargs={"job_id": str(job.id), "resume_from_row": 200},
+        )
         assert result == job
 
 

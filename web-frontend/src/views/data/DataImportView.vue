@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useDataImport } from '@/composables/useDataImport'
 import { useStationStore } from '@/stores/station'
 import { getErrorMessage } from '@/api/errors'
-import { ref } from 'vue'
+import { IMPORT_TYPE_LABELS } from '@/types/dataImport'
 import type { StationRead } from '@/types/station'
+import type { ImportJob, ImportType } from '@/types/dataImport'
 import ImportUploader from '@/components/data/ImportUploader.vue'
 import ImportProgressPanel from '@/components/data/ImportProgressPanel.vue'
 import ImportResultSummary from '@/components/data/ImportResultSummary.vue'
@@ -16,6 +17,8 @@ const {
   isUploading,
   importHistory,
   isLoadingHistory,
+  activeImportType,
+  activeEmsFormat,
   uploadFile,
   stopPolling,
   cancelImport,
@@ -27,6 +30,8 @@ const {
 const stationStore = useStationStore()
 const stations = ref<StationRead[]>([])
 const isLoadingStations = ref(false)
+
+const importTypeLabels = IMPORT_TYPE_LABELS
 
 async function loadStations(): Promise<void> {
   isLoadingStations.value = true
@@ -54,6 +59,17 @@ function handleResume(jobId: string): void {
 function handleHistoryPageChange(page: number, pageSize: number): void {
   loadImportHistory(undefined, page, pageSize)
 }
+
+function handleTabChange(key: string): void {
+  const validTypes: ImportType[] = ['trading_data', 'station_output', 'storage_operation']
+  if (!validTypes.includes(key as ImportType)) return
+  activeImportType.value = key as ImportType
+  resetCurrentJob()
+}
+
+watch(activeImportType, () => {
+  loadImportHistory()
+})
 
 const showUploader = computed(() => {
   return !currentJob.value
@@ -114,13 +130,22 @@ onUnmounted(() => {
   <div>
     <h2 style="margin-bottom: 16px;">数据导入</h2>
 
+    <a-tabs :active-key="activeImportType" @change="handleTabChange">
+      <a-tab-pane key="trading_data" :tab="importTypeLabels.trading_data" />
+      <a-tab-pane key="station_output" :tab="importTypeLabels.station_output" />
+      <a-tab-pane key="storage_operation" :tab="importTypeLabels.storage_operation" />
+    </a-tabs>
+
     <a-spin :spinning="isLoadingStations">
       <!-- 上传区域 -->
       <div v-if="showUploader" style="margin-bottom: 24px;">
         <ImportUploader
           :stations="stations"
           :is-uploading="isUploading"
+          :import-type="activeImportType"
+          :ems-format="activeEmsFormat"
           @upload="handleUpload"
+          @update:ems-format="activeEmsFormat = $event"
         />
       </div>
 
@@ -162,7 +187,7 @@ onUnmounted(() => {
         row-key="id"
         size="small"
       >
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, record }: { column: { key: string }, record: ImportJob }">
           <template v-if="column.key === 'status'">
             <a-tag :color="statusTagColor[record.status]">
               {{ statusLabel[record.status] || record.status }}

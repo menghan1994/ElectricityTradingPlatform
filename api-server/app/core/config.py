@@ -48,6 +48,13 @@ class Settings:
     DATA_IMPORT_DIR: str = config("DATA_IMPORT_DIR", default="./data/imports")
     MAX_IMPORT_FILE_SIZE: int = config("MAX_IMPORT_FILE_SIZE", default=104857600, cast=int)  # 100MB
 
+    # Market Data
+    MARKET_DATA_FETCH_TIMEOUT: int = config("MARKET_DATA_FETCH_TIMEOUT", default=30, cast=int)
+    MARKET_DATA_DEFAULT_CACHE_TTL: int = config("MARKET_DATA_DEFAULT_CACHE_TTL", default=3600, cast=int)
+    MARKET_DATA_RETRY_COUNT: int = config("MARKET_DATA_RETRY_COUNT", default=2, cast=int)
+    MARKET_DATA_RETRY_BACKOFF: float = config("MARKET_DATA_RETRY_BACKOFF", default=1.0, cast=float)
+    MARKET_DATA_ENCRYPTION_KEY: str = config("MARKET_DATA_ENCRYPTION_KEY", default="changeme-use-32-byte-key-here!!")
+
     # App
     APP_ENV: str = config("APP_ENV", default="development")
     APP_DEBUG: bool = config("APP_DEBUG", default=True, cast=bool)

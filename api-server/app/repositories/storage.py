@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
@@ -38,6 +39,12 @@ class StorageDeviceRepository(BaseRepository[StorageDevice]):
             stmt = stmt.where(StorageDevice.is_active.is_(True))
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def update_current_soc(self, device_id: UUID, current_soc: Decimal) -> None:
+        device = await self.session.get(StorageDevice, device_id)
+        if device:
+            device.current_soc = current_soc
+            await self.session.flush()
 
     async def get_all_active_filtered(
         self,

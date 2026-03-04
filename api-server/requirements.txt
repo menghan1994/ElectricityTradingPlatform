@@ -16,6 +16,7 @@ python-decouple==3.8
 # Security
 bcrypt==5.0.0
 PyJWT==2.11.0
+cryptography==44.0.0
 
 # Async tasks
 celery==5.6.0

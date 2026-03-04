@@ -19,4 +19,16 @@ export const dataRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/data/DataImportView.vue'),
     meta: { requiresAuth: true, roles: ['admin'] },
   },
+  {
+    path: '/data/anomalies',
+    name: 'AnomalyManagement',
+    component: () => import('@/views/data/AnomalyManagementView.vue'),
+    meta: { requiresAuth: true, roles: ['admin'] },
+  },
+  {
+    path: '/data/market-data',
+    name: 'MarketData',
+    component: () => import('@/views/data/MarketDataView.vue'),
+    meta: { requiresAuth: true, roles: ['admin'] },
+  },
 ]

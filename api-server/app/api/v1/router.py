@@ -2,8 +2,10 @@ from fastapi import APIRouter
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.bindings import router as bindings_router
+from app.api.v1.anomalies import router as anomalies_router
 from app.api.v1.data_imports import router as data_imports_router
 from app.api.v1.health import router as health_router
+from app.api.v1.market_data import router as market_data_router
 from app.api.v1.market_rules import router as market_rules_router
 from app.api.v1.stations import router as stations_router
 from app.api.v1.users import router as users_router
@@ -19,3 +21,5 @@ api_v1_router.include_router(wizard_router, prefix="/wizard", tags=["wizard"])
 api_v1_router.include_router(bindings_router, prefix="/bindings", tags=["bindings"])
 api_v1_router.include_router(market_rules_router, prefix="/market-rules", tags=["market-rules"])
 api_v1_router.include_router(data_imports_router, prefix="/data-imports", tags=["data-imports"])
+api_v1_router.include_router(anomalies_router, prefix="/anomalies", tags=["anomalies"])
+api_v1_router.include_router(market_data_router, prefix="/market-data", tags=["market-data"])

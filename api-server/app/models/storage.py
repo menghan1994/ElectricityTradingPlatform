@@ -27,6 +27,7 @@ class StorageDevice(Base, IdMixin, TimestampMixin):
         Numeric(5, 4), nullable=False, server_default=text("0.1"),
     )
     battery_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    current_soc: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (

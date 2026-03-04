@@ -51,11 +51,18 @@ describe('ImportUploader', () => {
     vi.clearAllMocks()
   })
 
-  function mountUploader(props: Partial<{ stations: StationRead[]; isUploading: boolean }> = {}) {
+  function mountUploader(props: Partial<{
+    stations: StationRead[]
+    isUploading: boolean
+    importType: string
+    emsFormat: string
+  }> = {}) {
     return mount(ImportUploader, {
       props: {
         stations: props.stations ?? mockStations,
         isUploading: props.isUploading ?? false,
+        importType: (props.importType ?? 'trading_data') as any,
+        emsFormat: (props.emsFormat ?? 'standard') as any,
       },
       global: {
         stubs: {
@@ -78,6 +85,11 @@ describe('ImportUploader', () => {
             emits: ['click'],
           },
           InboxOutlined: { template: '<span class="inbox-icon" />' },
+          EmsFormatSelector: {
+            template: '<div class="ems-selector" />',
+            props: ['modelValue'],
+            emits: ['update:modelValue'],
+          },
         },
       },
     })
@@ -197,5 +209,36 @@ describe('ImportUploader', () => {
 
     expect(message.warning).toHaveBeenCalledWith('请先选择要导入的文件')
     expect(wrapper.emitted('upload')).toBeFalsy()
+  })
+
+  it('should show trading_data hint text', () => {
+    const wrapper = mountUploader({ importType: 'trading_data' })
+    expect(wrapper.text()).toContain('出清价格')
+  })
+
+  it('should show station_output hint text', () => {
+    const wrapper = mountUploader({ importType: 'station_output' })
+    expect(wrapper.text()).toContain('实际出力')
+  })
+
+  it('should show storage_operation hint text', () => {
+    const wrapper = mountUploader({ importType: 'storage_operation' })
+    expect(wrapper.text()).toContain('SOC')
+    expect(wrapper.text()).toContain('充放电功率')
+  })
+
+  it('should show EmsFormatSelector for storage_operation', () => {
+    const wrapper = mountUploader({ importType: 'storage_operation' })
+    expect(wrapper.find('.ems-selector').exists()).toBe(true)
+  })
+
+  it('should hide EmsFormatSelector for trading_data', () => {
+    const wrapper = mountUploader({ importType: 'trading_data' })
+    expect(wrapper.find('.ems-selector').exists()).toBe(false)
+  })
+
+  it('should hide EmsFormatSelector for station_output', () => {
+    const wrapper = mountUploader({ importType: 'station_output' })
+    expect(wrapper.find('.ems-selector').exists()).toBe(false)
   })
 })

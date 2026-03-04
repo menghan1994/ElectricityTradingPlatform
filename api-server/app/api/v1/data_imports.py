@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -15,17 +15,26 @@ from app.repositories.audit import AuditLogRepository
 from app.repositories.data_import import (
     DataImportJobRepository,
     ImportAnomalyRepository,
+    StationOutputRepository,
+    StorageOperationRepository,
     TradingRecordRepository,
 )
 from app.repositories.station import StationRepository
+from app.repositories.storage import StorageDeviceRepository
 from app.schemas.data_import import (
     AnomalyType,
+    EmsFormat,
     ImportAnomalyListResponse,
     ImportAnomalyRead,
     ImportJobListResponse,
     ImportJobRead,
     ImportJobStatus,
     ImportResultRead,
+    ImportType,
+    StationOutputRecordListResponse,
+    StationOutputRecordRead,
+    StorageOperationRecordListResponse,
+    StorageOperationRecordRead,
 )
 from app.services.audit_service import AuditService
 from app.services.data_import_service import DataImportService
@@ -50,9 +59,15 @@ def _get_data_import_service(
     station_repo = StationRepository(session)
     audit_repo = AuditLogRepository(session)
     audit_service = AuditService(audit_repo)
+    station_output_repo = StationOutputRepository(session)
+    storage_operation_repo = StorageOperationRepository(session)
+    storage_device_repo = StorageDeviceRepository(session)
     return DataImportService(
         import_job_repo, trading_record_repo, anomaly_repo,
         station_repo, audit_service,
+        station_output_repo=station_output_repo,
+        storage_operation_repo=storage_operation_repo,
+        storage_device_repo=storage_device_repo,
     )
 
 
@@ -91,33 +106,40 @@ def _validate_upload_file(file: UploadFile) -> None:
 
 
 @router.post("/upload", response_model=ImportJobRead, status_code=201)
-async def upload_trading_data(
+async def upload_import_data(
     request: Request,
     file: UploadFile = File(...),
     station_id: UUID = Form(...),
+    import_type: ImportType = Form("trading_data"),
+    ems_format: EmsFormat | None = Form(None),
     current_user: User = Depends(require_roles(["admin"])),
     _write_check: User = Depends(require_write_permission),
     service: DataImportService = Depends(_get_data_import_service),
 ) -> ImportJobRead:
-    """上传历史交易数据文件并启动导入。"""
+    """上传数据文件并启动导入（支持交易数据、电站出力、储能运行数据）。"""
     _validate_upload_file(file)
     ip_address = get_client_ip(request)
-    job = await service.create_import_job(station_id, file, current_user, ip_address)
+    job = await service.create_import_job(
+        station_id, file, current_user, ip_address,
+        import_type=import_type, ems_format=ems_format,
+    )
     return ImportJobRead.model_validate(job)
 
 
 @router.get("", response_model=ImportJobListResponse)
 async def list_import_jobs(
     station_id: UUID | None = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     status: ImportJobStatus | None = None,
+    import_type: ImportType | None = None,
     current_user: User = Depends(require_roles(["admin"])),
     service: DataImportService = Depends(_get_data_import_service),
 ) -> ImportJobListResponse:
     """分页查询导入任务列表。"""
     jobs, total = await service.list_import_jobs(
-        page=page, page_size=page_size, station_id=station_id, status=status,
+        page=page, page_size=page_size, station_id=station_id,
+        status=status, import_type=import_type,
     )
     return ImportJobListResponse(
         items=[ImportJobRead.model_validate(j) for j in jobs],
@@ -152,8 +174,8 @@ async def get_import_result(
 @router.get("/{job_id}/anomalies", response_model=ImportAnomalyListResponse)
 async def get_import_anomalies(
     job_id: UUID,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     anomaly_type: AnomalyType | None = None,
     current_user: User = Depends(require_roles(["admin"])),
     service: DataImportService = Depends(_get_data_import_service),
@@ -196,3 +218,43 @@ async def cancel_import(
     ip_address = get_client_ip(request)
     job = await service.cancel_import_job(job_id, current_user, ip_address)
     return ImportJobRead.model_validate(job)
+
+
+@router.get("/{job_id}/output-records", response_model=StationOutputRecordListResponse)
+async def get_output_records(
+    job_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(require_roles(["admin"])),
+    service: DataImportService = Depends(_get_data_import_service),
+) -> StationOutputRecordListResponse:
+    """查看电站出力数据记录。"""
+    records, total = await service.list_output_records(
+        job_id=job_id, page=page, page_size=page_size,
+    )
+    return StationOutputRecordListResponse(
+        items=[StationOutputRecordRead.model_validate(r) for r in records],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/{job_id}/storage-records", response_model=StorageOperationRecordListResponse)
+async def get_storage_records(
+    job_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(require_roles(["admin"])),
+    service: DataImportService = Depends(_get_data_import_service),
+) -> StorageOperationRecordListResponse:
+    """查看储能运行数据记录。"""
+    records, total = await service.list_storage_records(
+        job_id=job_id, page=page, page_size=page_size,
+    )
+    return StorageOperationRecordListResponse(
+        items=[StorageOperationRecordRead.model_validate(r) for r in records],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )

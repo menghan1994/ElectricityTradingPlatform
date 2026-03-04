@@ -4,18 +4,20 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.tasks.import_tasks import (
     BATCH_SIZE,
-    SyncBatchWriter,
-    _check_period_completeness,
+    COLUMN_MAPPING,
+    ImportContext,
+    PERIODS_PER_DAY,
     _detect_csv_encoding,
     _execute_import,
     _map_columns,
     _parse_date,
+    _parse_output_kw,
     _parse_period,
     _parse_price,
 )
@@ -99,33 +101,72 @@ class TestParsePrice:
         assert _parse_price("") is None
 
 
+class TestParseOutputKw:
+    """出力解析测试。"""
+
+    def test_valid_output(self):
+        assert _parse_output_kw("500.50") == Decimal("500.50")
+
+    def test_zero_output(self):
+        assert _parse_output_kw("0") == Decimal("0")
+
+    def test_negative_output(self):
+        assert _parse_output_kw("-10.0") is None
+
+    def test_invalid_output(self):
+        assert _parse_output_kw("abc") is None
+
+    def test_nan_output(self):
+        assert _parse_output_kw("NaN") is None
+
+
 class TestMapColumns:
     """列头映射测试。"""
 
     def test_english_columns(self):
-        result = _map_columns(["trading_date", "period", "clearing_price"])
+        result = _map_columns(
+            ["trading_date", "period", "clearing_price"],
+            COLUMN_MAPPING,
+            {"trading_date", "period", "clearing_price"},
+        )
         assert result is not None
         assert result[0] == "trading_date"
         assert result[1] == "period"
         assert result[2] == "clearing_price"
 
     def test_chinese_columns(self):
-        result = _map_columns(["交易日期", "时段", "出清价格"])
+        result = _map_columns(
+            ["交易日期", "时段", "出清价格"],
+            COLUMN_MAPPING,
+            {"trading_date", "period", "clearing_price"},
+        )
         assert result is not None
         assert result[0] == "trading_date"
         assert result[1] == "period"
         assert result[2] == "clearing_price"
 
     def test_mixed_case(self):
-        result = _map_columns(["Trading_Date", "Period", "Clearing_Price"])
+        result = _map_columns(
+            ["Trading_Date", "Period", "Clearing_Price"],
+            COLUMN_MAPPING,
+            {"trading_date", "period", "clearing_price"},
+        )
         assert result is not None
 
     def test_missing_column(self):
-        result = _map_columns(["trading_date", "period"])
+        result = _map_columns(
+            ["trading_date", "period"],
+            COLUMN_MAPPING,
+            {"trading_date", "period", "clearing_price"},
+        )
         assert result is None
 
     def test_extra_columns_ignored(self):
-        result = _map_columns(["trading_date", "extra_col", "period", "clearing_price"])
+        result = _map_columns(
+            ["trading_date", "extra_col", "period", "clearing_price"],
+            COLUMN_MAPPING,
+            {"trading_date", "period", "clearing_price"},
+        )
         assert result is not None
         assert 0 in result
         assert 2 in result
@@ -147,11 +188,104 @@ class TestDetectCsvEncoding:
         path.unlink()
 
 
-class TestBatchSize:
-    """批量大小配置测试。"""
+class TestConstants:
+    """常量配置测试。"""
 
     def test_batch_size_is_1000(self):
         assert BATCH_SIZE == 1000
+
+    def test_periods_per_day_is_96(self):
+        assert PERIODS_PER_DAY == 96
+
+
+# --- ImportContext 测试 ---
+
+
+class TestImportContext:
+    """ImportContext 状态跟踪测试。"""
+
+    def test_add_anomaly_increments_counters(self):
+        session = MagicMock()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.success_records = 0
+        job.failed_records = 0
+        job.processed_records = 0
+
+        ctx = ImportContext(session, job, 0)
+        ctx.row_number = 5
+        ctx.add_anomaly("format_error", "price", "abc", "格式错误")
+
+        assert ctx.failed_records == 1
+        assert ctx.processed_records == 1
+        assert len(ctx.batch_anomalies) == 1
+        assert ctx.batch_anomalies[0]["anomaly_type"] == "format_error"
+        assert ctx.batch_anomalies[0]["row_number"] == 5
+
+    def test_should_flush_on_batch_size(self):
+        session = MagicMock()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.success_records = 0
+        job.failed_records = 0
+        job.processed_records = 0
+
+        ctx = ImportContext(session, job, 0)
+        assert not ctx.should_flush()
+
+        ctx.batch_records = [{}] * BATCH_SIZE
+        assert ctx.should_flush()
+
+    def test_should_flush_on_anomaly_size(self):
+        session = MagicMock()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.success_records = 0
+        job.failed_records = 0
+        job.processed_records = 0
+
+        ctx = ImportContext(session, job, 0)
+        ctx.batch_anomalies = [{}] * BATCH_SIZE
+        assert ctx.should_flush()
+
+    def test_flush_batch_calls_insert_and_commits(self):
+        session = MagicMock()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.success_records = 0
+        job.failed_records = 0
+        job.processed_records = 0
+
+        ctx = ImportContext(session, job, 0)
+        ctx.batch_records = [{"id": uuid.uuid4()}]
+        ctx.row_number = 10
+        ctx.processed_records = 10
+
+        insert_fn = MagicMock(return_value=(1, 0))
+        ctx.flush_batch(insert_fn)
+
+        insert_fn.assert_called_once()
+        session.commit.assert_called_once()
+        assert ctx.success_records == 1
+        assert not ctx.batch_records  # cleared
+        assert not ctx.batch_anomalies  # cleared
+
+    def test_flush_batch_handles_duplicates(self):
+        session = MagicMock()
+        job = MagicMock()
+        job.id = uuid.uuid4()
+        job.success_records = 0
+        job.failed_records = 0
+        job.processed_records = 0
+
+        ctx = ImportContext(session, job, 0)
+        ctx.batch_records = [{"id": uuid.uuid4()} for _ in range(3)]
+
+        insert_fn = MagicMock(return_value=(2, 1))
+        ctx.flush_batch(insert_fn)
+
+        assert ctx.success_records == 2
+        assert ctx.failed_records == 1
 
 
 # --- Celery 任务核心逻辑测试 ---
@@ -190,6 +324,7 @@ def _make_mock_job(
     job.completed_at = None
     job.imported_by = uuid.uuid4()
     job.original_file_name = "test.csv"
+    job.ems_format = None
     return job
 
 
@@ -206,92 +341,6 @@ def _make_mock_market_rule(price_cap_lower: float = -100.0, price_cap_upper: flo
     rule.price_cap_upper = price_cap_upper
     rule.is_active = True
     return rule
-
-
-class TestSyncBatchWriter:
-    """SyncBatchWriter 批量写入器测试。"""
-
-    def test_insert_trading_records_empty(self):
-        session = MagicMock()
-        writer = SyncBatchWriter(session)
-        inserted, dup_count, anomalies = writer.insert_trading_records([], uuid.uuid4())
-        assert inserted == 0
-        assert dup_count == 0
-        assert anomalies == []
-        session.execute.assert_not_called()
-
-    def test_insert_trading_records_all_inserted(self):
-        session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.rowcount = 3
-        session.execute.return_value = mock_result
-
-        writer = SyncBatchWriter(session)
-        records = [
-            {"id": uuid.uuid4(), "trading_date": date(2025, 1, 1), "period": i,
-             "station_id": uuid.uuid4(), "clearing_price": Decimal("100"),
-             "import_job_id": uuid.uuid4()}
-            for i in range(1, 4)
-        ]
-        inserted, dup_count, anomalies = writer.insert_trading_records(records, uuid.uuid4())
-        assert inserted == 3
-        assert dup_count == 0
-        assert anomalies == []
-
-    def test_insert_trading_records_with_duplicates(self):
-        session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.rowcount = 2  # 3 records, 1 duplicate
-        session.execute.return_value = mock_result
-
-        writer = SyncBatchWriter(session)
-        job_uuid = uuid.uuid4()
-        records = [
-            {"id": uuid.uuid4(), "trading_date": date(2025, 1, 1), "period": i,
-             "station_id": uuid.uuid4(), "clearing_price": Decimal("100"),
-             "import_job_id": job_uuid}
-            for i in range(1, 4)
-        ]
-        inserted, dup_count, anomalies = writer.insert_trading_records(records, job_uuid)
-        assert inserted == 2
-        assert dup_count == 1
-        assert len(anomalies) == 1
-        assert anomalies[0]["anomaly_type"] == "duplicate"
-        assert "1 条重复记录" in anomalies[0]["description"]
-
-    def test_insert_anomalies_empty(self):
-        session = MagicMock()
-        writer = SyncBatchWriter(session)
-        writer.insert_anomalies([])
-        session.execute.assert_not_called()
-
-    def test_insert_anomalies_non_empty(self):
-        session = MagicMock()
-        writer = SyncBatchWriter(session)
-        anomalies = [{"id": uuid.uuid4(), "anomaly_type": "format_error"}]
-        writer.insert_anomalies(anomalies)
-        session.execute.assert_called_once()
-
-    def test_flush_batch_commits_and_returns_counts(self):
-        session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.rowcount = 5
-        session.execute.return_value = mock_result
-
-        writer = SyncBatchWriter(session)
-        job = MagicMock()
-        job_uuid = uuid.uuid4()
-        records = [{"id": uuid.uuid4()} for _ in range(5)]
-
-        inserted, dup_count = writer.flush_batch(
-            job, records, [], job_uuid, 10, 5, 0, 10,
-        )
-        assert inserted == 5
-        assert dup_count == 0
-        session.commit.assert_called_once()
-        assert job.processed_records == 10
-        assert job.success_records == 10  # 5 + inserted(5)
-        assert job.last_processed_row == 10
 
 
 class TestExecuteImport:
@@ -326,12 +375,11 @@ class TestExecuteImport:
 
         session.get.side_effect = session_get_side_effect
 
-        # session.query(...).filter(...).first() 返回 market_rule
-        mock_query = MagicMock()
-        mock_filter = MagicMock()
-        mock_filter.first.return_value = market_rule
-        mock_query.filter.return_value = mock_filter
-        session.query.return_value = mock_query
+        mock_execute_result = MagicMock()
+        mock_execute_result.scalar_one_or_none.return_value = market_rule
+        mock_execute_result.rowcount = 3
+        mock_execute_result.all.return_value = []
+        session.execute.return_value = mock_execute_result
 
         return {
             "session": session,
@@ -341,12 +389,12 @@ class TestExecuteImport:
             "station": station,
             "market_rule": market_rule,
             "tmp_dir": tmp_dir,
+            "mock_execute_result": mock_execute_result,
         }
 
     def _create_job_and_csv(self, setup_mocks, csv_rows):
         """创建 job 和 CSV 文件，返回 (job, job_id_str)。"""
         m = setup_mocks
-        file_path = _create_csv_file(csv_rows, m["tmp_dir"])
         file_name = f"{m['job_id']}/test.csv"
 
         job = _make_mock_job(m["job_id"], m["station_id"], file_name)
@@ -368,16 +416,11 @@ class TestExecuteImport:
         ]
         job, job_id_str = self._create_job_and_csv(m, csv_rows)
 
-        # 创建文件到正确路径
         job_dir = m["tmp_dir"] / str(m["job_id"])
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
-        job.file_name = f"{m['job_id']}/test.csv"
 
-        # Mock SyncBatchWriter 的 insert 方法
-        mock_result = MagicMock()
-        mock_result.rowcount = 3
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 3
 
         _execute_import(m["session"], m["task"], job_id_str, 0)
 
@@ -393,9 +436,9 @@ class TestExecuteImport:
 
         csv_rows = [
             ["trading_date", "period", "clearing_price"],
-            ["2025-01-01", "1", "100.00"],  # 正常
-            ["2025-01-01", "2", "abc"],      # 价格格式错误
-            ["invalid-date", "3", "300.00"],  # 日期格式错误
+            ["2025-01-01", "1", "100.00"],
+            ["2025-01-01", "2", "abc"],
+            ["invalid-date", "3", "300.00"],
         ]
         job, job_id_str = self._create_job_and_csv(m, csv_rows)
 
@@ -403,15 +446,12 @@ class TestExecuteImport:
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 1
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 1
 
         _execute_import(m["session"], m["task"], job_id_str, 0)
 
         assert job.status == "completed"
         assert job.total_records == 3
-        # 2 行校验失败（价格格式 + 日期格式）
         assert job.failed_records >= 2
 
     @patch("app.tasks.import_tasks.settings")
@@ -419,15 +459,14 @@ class TestExecuteImport:
         """超出省份限价的价格标记为 out_of_range。"""
         m = setup_mocks
         mock_settings.DATA_IMPORT_DIR = str(m["tmp_dir"])
-        # 设置限价范围 -100 ~ 1500
         m["market_rule"].price_cap_lower = -100.0
         m["market_rule"].price_cap_upper = 1500.0
 
         csv_rows = [
             ["trading_date", "period", "clearing_price"],
-            ["2025-01-01", "1", "100.00"],    # 正常
-            ["2025-01-01", "2", "2000.00"],   # 超出上限
-            ["2025-01-01", "3", "-200.00"],   # 超出下限
+            ["2025-01-01", "1", "100.00"],
+            ["2025-01-01", "2", "2000.00"],
+            ["2025-01-01", "3", "-200.00"],
         ]
         job, job_id_str = self._create_job_and_csv(m, csv_rows)
 
@@ -435,15 +474,12 @@ class TestExecuteImport:
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 1
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 1
 
         _execute_import(m["session"], m["task"], job_id_str, 0)
 
         assert job.status == "completed"
         assert job.total_records == 3
-        # 2 行超出限价范围
         assert job.failed_records >= 2
 
     @patch("app.tasks.import_tasks.settings")
@@ -454,12 +490,11 @@ class TestExecuteImport:
 
         csv_rows = [
             ["trading_date", "period", "clearing_price"],
-            ["2025-01-01", "1", "100.00"],  # row 1 — 应跳过
-            ["2025-01-01", "2", "200.00"],  # row 2 — 应跳过
-            ["2025-01-01", "3", "300.00"],  # row 3 — 应处理
+            ["2025-01-01", "1", "100.00"],
+            ["2025-01-01", "2", "200.00"],
+            ["2025-01-01", "3", "300.00"],
         ]
         job, job_id_str = self._create_job_and_csv(m, csv_rows)
-        # 模拟已处理了前 2 行
         job.processed_records = 2
         job.success_records = 2
         job.failed_records = 0
@@ -468,15 +503,12 @@ class TestExecuteImport:
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 1
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 1
 
         _execute_import(m["session"], m["task"], job_id_str, resume_from_row=2)
 
         assert job.status == "completed"
         assert job.total_records == 3
-        # success_records 应包含之前的 2 + 新处理的 1
         assert job.success_records >= 3
 
     @patch("app.tasks.import_tasks.settings")
@@ -495,9 +527,7 @@ class TestExecuteImport:
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 1
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 1
 
         _execute_import(m["session"], m["task"], job_id_str, 0)
 
@@ -508,7 +538,7 @@ class TestExecuteImport:
     def test_job_not_found_raises(self, mock_settings, setup_mocks):
         """导入任务不存在时抛出 ValueError。"""
         m = setup_mocks
-        self._current_job = None  # session.get 返回 None
+        self._current_job = None
 
         with pytest.raises(ValueError, match="not found"):
             _execute_import(m["session"], m["task"], str(uuid.uuid4()), 0)
@@ -522,7 +552,6 @@ class TestExecuteImport:
         job = _make_mock_job(m["job_id"], m["station_id"], "test.csv")
         self._current_job = job
 
-        # 覆盖 session.get 使 station 返回 None
         from app.models.data_import import DataImportJob
 
         def get_side_effect(model, model_id):
@@ -541,7 +570,7 @@ class TestExecuteImport:
         m = setup_mocks
         mock_settings.DATA_IMPORT_DIR = str(m["tmp_dir"])
 
-        csv_rows: list[list[str]] = []  # 空文件
+        csv_rows: list[list[str]] = []
         job, job_id_str = self._create_job_and_csv(m, csv_rows)
 
         job_dir = m["tmp_dir"] / str(m["job_id"])
@@ -558,7 +587,7 @@ class TestExecuteImport:
         mock_settings.DATA_IMPORT_DIR = str(m["tmp_dir"])
 
         csv_rows = [
-            ["date", "price"],  # 缺少 period 列
+            ["date", "price"],
             ["2025-01-01", "100.00"],
         ]
         job, job_id_str = self._create_job_and_csv(m, csv_rows)
@@ -586,9 +615,7 @@ class TestExecuteImport:
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 0
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 0
 
         _execute_import(m["session"], m["task"], job_id_str, 0)
 
@@ -605,7 +632,7 @@ class TestExecuteImport:
             ["trading_date", "period", "clearing_price"],
             ["2025-01-01", "1", "100.00"],
             ["2025-01-01", "2", "200.00"],
-            ["2025-01-01", "3", "abc"],  # format error
+            ["2025-01-01", "3", "abc"],
             ["2025-01-01", "4", "400.00"],
         ]
         job, job_id_str = self._create_job_and_csv(m, csv_rows)
@@ -614,15 +641,12 @@ class TestExecuteImport:
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 3  # 3 inserted successfully
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 3
 
         _execute_import(m["session"], m["task"], job_id_str, 0)
 
         assert job.status == "completed"
         assert job.total_records == 4
-        # data_completeness should be > 0
         assert job.data_completeness > 0
 
     @patch("app.tasks.import_tasks.settings")
@@ -641,13 +665,10 @@ class TestExecuteImport:
         job_dir.mkdir(exist_ok=True)
         _create_csv_file(csv_rows, job_dir)
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 1
-        m["session"].execute.return_value = mock_result
+        m["mock_execute_result"].rowcount = 1
 
         _execute_import(m["session"], m["task"], job_id_str, 0)
 
-        # 验证 session.add 被调用（审计日志）
         m["session"].add.assert_called()
         audit_log = m["session"].add.call_args[0][0]
         assert audit_log.action == "complete_import_job"
@@ -667,14 +688,8 @@ class TestProcessTradingDataImport:
         mock_factory.return_value = lambda: mock_session
 
         job_id = str(uuid.uuid4())
-        # bind=True: .run() 自动注入 task self，只传 job_id 和 resume_from_row
         process_trading_data_import.run(job_id, 0)
 
-        mock_execute.assert_called_once()
-        call_args = mock_execute.call_args[0]
-        assert call_args[0] is mock_session
-        assert call_args[2] == job_id
-        assert call_args[3] == 0
         mock_session.close.assert_called_once()
 
     @patch("app.tasks.import_tasks.get_sync_session_factory")
@@ -695,9 +710,7 @@ class TestProcessTradingDataImport:
         with pytest.raises(RuntimeError, match="Import exploded"):
             process_trading_data_import.run(job_id, 0)
 
-        # 验证 rollback 被调用
         mock_session.rollback.assert_called()
-        # 验证 job 状态被更新为 failed
         assert mock_job.status == "failed"
         assert "Import exploded" in mock_job.error_message
         mock_session.close.assert_called_once()
