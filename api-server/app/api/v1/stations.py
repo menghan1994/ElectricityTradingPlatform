@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -9,8 +10,10 @@ from app.core.dependencies import require_roles
 from app.core.ip_utils import get_client_ip
 from app.models.user import User
 from app.repositories.audit import AuditLogRepository
+from app.repositories.prediction import PowerPredictionRepository
 from app.repositories.station import StationRepository
 from app.repositories.storage import StorageDeviceRepository
+from app.schemas.prediction import PowerPredictionListResponse, PowerPredictionRead
 from app.schemas.station import (
     StationCreate,
     StationListResponse,
@@ -200,3 +203,25 @@ async def delete_station_device(
     await wizard_service.delete_station_device(
         current_user, station_id, device_id, ip_address,
     )
+
+
+@router.get("/{station_id}/predictions", response_model=PowerPredictionListResponse)
+async def get_station_predictions(
+    station_id: UUID,
+    prediction_date: date = Query(...),
+    model_id: UUID | None = Query(None),
+    access_ctx: DataAccessContext = Depends(get_data_access_context),
+    station_service: StationService = Depends(_get_station_service),
+    session: AsyncSession = Depends(get_db_session),
+) -> PowerPredictionListResponse:
+    """查询指定电站的预测数据。"""
+    # H1 fix: 验证用户有权访问该电站（防止 IDOR）
+    await station_service.get_station_for_user(access_ctx, station_id)
+    prediction_repo = PowerPredictionRepository(session)
+    predictions = await prediction_repo.get_by_station_date_model(
+        station_id=station_id,
+        prediction_date=prediction_date,
+        model_id=model_id,
+    )
+    items = [PowerPredictionRead.model_validate(p) for p in predictions]
+    return PowerPredictionListResponse(items=items, total=len(items))

@@ -31,4 +31,10 @@ export const dataRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/data/MarketDataView.vue'),
     meta: { requiresAuth: true, roles: ['admin'] },
   },
+  {
+    path: '/data/prediction-models',
+    name: 'PredictionModelConfig',
+    component: () => import('@/views/data/PredictionModelConfigView.vue'),
+    meta: { requiresAuth: true, roles: ['admin'] },
+  },
 ]

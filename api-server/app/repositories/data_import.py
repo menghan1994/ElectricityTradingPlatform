@@ -351,6 +351,7 @@ class ImportAnomalyRepository(BaseRepository[ImportAnomaly]):
         if anomaly:
             anomaly.status = new_status
             await self.session.flush()
+            await self.session.refresh(anomaly)
 
     async def bulk_update_status(
         self,

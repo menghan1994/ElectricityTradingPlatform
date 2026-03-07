@@ -60,10 +60,10 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: 功率预测与数据可视化
-  epic-3: backlog
-  3-1-prediction-model-config: backlog
-  3-2-prediction-data-auto-fetch: backlog
-  3-3-prediction-curve-visualization: backlog
+  epic-3: in-progress
+  3-1-prediction-model-config: done
+  3-2-prediction-data-auto-fetch: done
+  3-3-prediction-curve-visualization: ready-for-dev
   epic-3-retrospective: optional
 
   # Epic 4: 多Agent协作引擎与AI报价建议生成

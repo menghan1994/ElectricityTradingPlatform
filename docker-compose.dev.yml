@@ -46,6 +46,25 @@ services:
     env_file:
       - .env.development
 
+  mock-market-api:
+    build:
+      context: ./mock-market-api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./mock-market-api/main.py:/app/main.py
+    environment:
+      MOCK_FAILURE_RATE: "0"
+      MOCK_DELAY_SECONDS: "0"
+      MOCK_API_KEY: ""
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   langgraph-app:
     build:
       context: ./agent-engine
